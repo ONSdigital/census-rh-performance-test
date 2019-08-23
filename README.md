@@ -2,7 +2,12 @@
 
 Code related to the performance testing of RH
 
-## Locust Installation
+## Locust
+
+For details about using Locust for load testing see https://docs.locust.io/en/stable/index.html
+
+
+### Locust Installation
 
 Firstly make sure you have python installed. Then install Locust by running:
 
@@ -14,7 +19,7 @@ I had problems and needed to do:
     $ CC=clang pip install greenlet
     $ CC=clang pip install locustio
 
-## Running Locust
+### Running Locust
 
 A simple command to run with 10 simulated users, who arrive a the rate of 2 per second is:
 
