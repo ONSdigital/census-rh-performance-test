@@ -7,21 +7,49 @@ Code related to the performance testing of RH
 For details about using Locust for load testing see https://docs.locust.io/en/stable/index.html
 
 
-### Locust Installation
+### Run - Local
 
-Firstly make sure you have python installed. Then install Locust by running:
+Clone the repository. Change to the census-rh-performance-test directory where the repository was cloned. Run
 
-    python3 -m pip install locustio
+1. pipenv shell
+2. locust -f ./locust_tasks/locustfile.py  --host=http://localhost:9092
 
-I had problems and needed to do:
+### Build Docker image and run locally 
 
-    $ pip install --upgrade pip
-    $ CC=clang pip install greenlet
-    $ CC=clang pip install locustio
+docker build -t loadtest .
+docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true loadtest
 
-### Running Locust
+This and above Run - Local assumes you have RH UI running on port 9092 with all it's dependencies available:
+* RH Service
+* Redis
+* RabbitMQ
 
-A simple command to run with 10 simulated users, who arrive a the rate of 2 per second is:
+In a browser you can launch the Locust GUI at http://localhost:8089
 
-    $ cd census-rh-performance-test/src/rh-locust
-    $ locust -f rh.py --no-web -c 10 -r 2 --run-time=2m
+### Run - Kubernetes
+Assumes project and K8 cluster has been created. See Terraform repository.
+
+* gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
+* kubectl apply -f kubernetes_config/master-deployment.yaml
+* kubectl apply -f kubernetes_config/master-service.yaml
+* kubectl apply -f kubernetes_config/worker-deployment.yaml
+
+Remove service, deployment.
+* kubectl delete svc locust-master
+* kubectl delete deployment locust-master
+* kubectl delete deployment locust-worker
+
+Remember to remove the k8 cluster to avoid ONS still being charged.
+
+
+### Environment configuration items
+
+There are a number of environment variable configuration items which can be set:
+
+* FILE_NAME default './test_data/event_data.txt' for pre-canned test data
+* RABBITMQ_URL default 'amqp://guest:guest@localhost:6672/'
+* EXCHANGE default 'events'
+* UAC_ROUTING_KEY default 'event.uac.update'
+* CASE_ROUTING_KEY default 'event.case.update'
+* DATA_PUBLISH default false, whether to publish test data to Firestore
+

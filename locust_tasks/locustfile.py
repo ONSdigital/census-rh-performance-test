@@ -1,9 +1,9 @@
-#
+import sys
+import os
+from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
 
-import random
-from locust import HttpLocust, TaskSequence, TaskSet, seq_task, task
-from pyquery import PyQuery
-
+sys.path.append(os.getcwd())
+from locust_tasks.setup import setup, randomly_select_uac
 
 # TODO:
 # - Accept file with list of valid uac's (with addresses too?)
@@ -11,70 +11,72 @@ from pyquery import PyQuery
 # - Randomly pick an address from the presented list when requesting a new uac
 # - Confirm no concurrency issues by validating that presented addresses are as expected?
 
-log_status = False
-log_response = False
 
-# TODO: Don't use a single UAC. Read a set from file
-hardcoded_uac = 'w4nwwpphjjptp7fn'
+class LaunchEQ(TaskSequence):
+    """
+    Class to represent a user entering a UAC and launching EQ.
+    """
 
-# TODO: uprn+address need to be dynamically picked from the page
-hardcoded_urpn = '10023122451'
-hardcoded_address = '1 Gate Reach, Exeter, EX2 6GA'
+    UAC_START = 'Start Census'
 
-#
-# This task sequence simulates a user launching EQ.
-# The user enters a UAC, confirms their address is correct and then launches EQ.
-#    
-class launch_EQ(TaskSequence):
+    def on_start(self):
+        self.case = randomly_select_uac()
 
     # assume all users arrive at the start page
     @seq_task(1)
-    def start_page(self):
-        response = self.client.get("/start/")
-        log_progress('EQ.1 start_page', response)
-        
+    def get_uac(self):
+        """
+        GET Start page
+        """
+        with self.client.get('/start/', catch_response=True) as response:
+            if self.UAC_START not in response.text:
+                response.failure(f'{self.UAC_START} content not found')
+                self.interrupt()
+
     @seq_task(2)
-    def enter_valid_uac(self):
-        response = self.client.post("/start/", {
-            'uac': randomlySelectUAC()
-        })
-        log_progress('EQ.2 enter_valid_uac', response)
+    def post_uac(self):
+        """
+        POST a valid UAC
+        """
+        with self.client.post("/start/", {"uac": self.case['uac']}, catch_response=True) as response:
+            if self.case["addressLine1"] not in response.text:
+                response.failure(f'{self.case["addressLine1"]} content not found')
+                self.interrupt()
 
     @seq_task(3)
-    def select_address_is_correct(self):
-        response = self.client.post("/start/address-confirmation", {
-            'address-check-answer': 'Yes'
-        }, allow_redirects=False)
-        log_progress('EQ.3 select_address_is_correct', response)
+    def post_address_is_correct(self):
+        """
+        POST address confirmation
+        """
+        self.client.post("/start/address-confirmation", {"address-check-answer": "Yes"}, allow_redirects=False)
 
 
 #
 # This task sequence simulates a user launching EQ with a corrected address.
-# This is virtually the same as 'launch_EQ' except that aftering entering a UAC
+# This is virtually the same as 'launch_EQ' except that after entering a UAC
 # the user says that their address is not correct and enters a corrected address.
 # The address correction exercises different backend code. 
 #    
-class launch_EQ_with_address_correction(TaskSequence):
+class LaunchEQwithAddressCorrection(TaskSequence):
 
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
         response = self.client.get("/start/")
-        log_progress('EQAC.1 start_page', response)
+
         
     @seq_task(2)
     def enter_valid_uac(self):
         response = self.client.post("/start/", {
-            'uac': randomlySelectUAC()
+            'uac': setup.randomly_select_uac()
         })
-        log_progress('EQAC.2 enter_valid_uac', response)
+
 
     @seq_task(3)
     def select_address_not_correct(self):
         response = self.client.post("/start/address-confirmation", {
             'address-check-answer': 'No'
         }, allow_redirects=False)
-        log_progress('EQAC.3 select_address_not_correct', response)
 
     @seq_task(4)
     def correct_address(self):
@@ -85,7 +87,6 @@ class launch_EQ_with_address_correction(TaskSequence):
             'address-town': 'Exeter',
             'address-postcode': 'EX'
         }, allow_redirects=False)
-        log_progress('EQAC.4 correct_address', response)
 
 
 #
@@ -99,12 +100,10 @@ class request_new_code(TaskSequence):
     @seq_task(1)
     def start_page(self):
         response = self.client.get("/start/")
-        log_progress('RNC.1 start_page', response)
         
     @seq_task(2)
     def request_new_access_code(self):
         response = self.client.get("/request-access-code")
-        log_progress('RNC.2 request_new_access_code', response)
 
     @seq_task(3)
     def select_address(self):
@@ -113,33 +112,28 @@ class request_new_code(TaskSequence):
         response = self.client.post("/request-access-code/select-address", {
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
         })
-        log_progress('RNC.3 select_address', response)
 
     @seq_task(4)
     def confirm_address(self):
         response = self.client.post("/request-access-code/confirm-address", {
             'request-address-confirmation': 'yes'
         })
-        log_progress('RNC.4 confirm_address', response)
 
     @seq_task(5)
     def enter_mobile_number(self):
         response = self.client.post("/request-access-code/enter-mobile", {
             'request-mobile-number': '07714 330 933'
         })
-        log_progress('RNC.5 enter_mobile_number', response)
 
     @seq_task(6)
     def confirm_mobile_number(self):
         response = self.client.post("/request-access-code/confirm-mobile", {
             'request-mobile-confirmation': 'yes'
         })
-        log_progress('RNC.6 confirm_mobile_number', response)
 
     @seq_task(7)
     def start_for_new_uac(self):
         response = self.client.get("/start/")
-        log_progress('RNC.7 start_for_new_uac', response)
 
  
 class launch_web_chat(TaskSequence):
@@ -154,12 +148,10 @@ class launch_web_chat(TaskSequence):
     @seq_task(1)
     def start_page(self):
         response = self.client.get("/start/")
-        log_progress('LWC.1 start_page', response)
         
     @seq_task(2)
     def start_web_chat(self):
         response = self.client.get("/webchat")
-        log_progress('LWC.2 start_web_chat', response)
 
     @seq_task(3)
     def enter_web_chat_query(self):
@@ -168,37 +160,24 @@ class launch_web_chat(TaskSequence):
             'country': 'England',
             'query': 'technical'
         }, allow_redirects=False)
-        log_progress('LWC.3 enter_web_chat_query', response)
 
 
-class MyTaskSet(TaskSet):
+class UserBehavior(TaskSet):
     """
     This class controls the balance of the tasks which simulated users are performing.
     TODO: Adjust to a more representative balance. (Currently set for development)
     """
     
     tasks = {
-        launch_EQ: 70,
-        launch_EQ_with_address_correction: 10,
-        request_new_code: 10,
-        launch_web_chat: 10
+        LaunchEQ
     }
 
 
-def randomlySelectUAC():
-    # TODO: randomly select uac from list of valid ones
-    return hardcoded_uac
-    
-def log_progress(name, response):
-    if log_status == True:
-        print ('%s Status: %3d' % (name, response.status_code));
-    if log_response == True:
-        print ('%s Response: %s' % (name, response.text));
+class WebsiteUser(HttpLocust):
+    task_set = UserBehavior
+    wait_time = between(2, 10)
 
 
-class RH_performance_test(HttpLocust):
-    task_set = MyTaskSet
-    host = "https://dev-rh.int.census-gcp.onsdigital.uk"
+    def setup(self):
+        setup()
 
-    min_wait = 2500
-    max_wait = 10000
