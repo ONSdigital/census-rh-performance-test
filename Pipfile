@@ -4,10 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-locustio = "*"
+locustio = "==0.13.2"
 pika = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true

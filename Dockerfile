@@ -13,7 +13,7 @@ COPY test_data /test_data
 COPY locust-run.sh locust-run.sh
 
 # Install dependencies via pipenv
-RUN pipenv install --deploy --system --skip-lock
+RUN pipenv install --deploy --system
 
 # Expose the required Locust ports
 EXPOSE 5557 5558 8089
