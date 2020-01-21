@@ -1,15 +1,12 @@
 import sys
 import os
+import logging
 from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
 
 sys.path.append(os.getcwd())
 from locust_tasks.setup import setup, randomly_select_uac
 
-# TODO:
-# - Accept file with list of valid uac's (with addresses too?)
-# - Randomly select uac from consumed list
-# - Randomly pick an address from the presented list when requesting a new uac
-# - Confirm no concurrency issues by validating that presented addresses are as expected?
+logger = logging.getLogger('performance')
 
 
 class LaunchEQ(TaskSequence):
@@ -18,6 +15,7 @@ class LaunchEQ(TaskSequence):
     """
 
     UAC_START = 'Start Census'
+    ERROR_PAGE = 'Sorry, something went wrong'
 
     def on_start(self):
         self.case = randomly_select_uac()
@@ -30,7 +28,11 @@ class LaunchEQ(TaskSequence):
         """
         with self.client.get('/start/', catch_response=True) as response:
             if self.UAC_START not in response.text:
-                response.failure(f'{self.UAC_START} content not found')
+                response.failure(f'response status={response.status_code}, content {self.UAC_START} not found')
+                if self.ERROR_PAGE in response.text:
+                    logger.error(f'response status={response.status_code}, content={self.ERROR_PAGE}')
+                else:
+                    logger.error(f'response status={response.status_code}, content={response.text}')
                 self.interrupt()
 
     @seq_task(2)
@@ -40,7 +42,12 @@ class LaunchEQ(TaskSequence):
         """
         with self.client.post("/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             if self.case["addressLine1"] not in response.text:
-                response.failure(f'{self.case["addressLine1"]} content not found')
+                response.failure(f'response status={response.status_code}, '
+                                 f'content {self.case["addressLine1"]} not found')
+                if self.ERROR_PAGE in response.text:
+                    logger.error(f'response status={response.status_code}, content={self.ERROR_PAGE}')
+                else:
+                    logger.error(f'response status={response.status_code}, content={response.text}')
                 self.interrupt()
 
     @seq_task(3)
