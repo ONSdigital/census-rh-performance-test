@@ -1,8 +1,9 @@
 # Created by https://www.gitignore.io
 
 *~
+.project
+test_data/event_data.txt
 
 ### Python ###
 __pycache__
-.project
-
+.python-version
