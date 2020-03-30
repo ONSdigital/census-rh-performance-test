@@ -26,7 +26,7 @@ class LaunchEQ(TaskSequence):
         """
         GET Start page
         """
-        with self.client.get('/start/', catch_response=True) as response:
+        with self.client.get('/en/start/', catch_response=True) as response:
             if self.UAC_START not in response.text:
                 response.failure(f'response status={response.status_code}, content {self.UAC_START} not found')
                 if self.ERROR_PAGE in response.text:
@@ -40,7 +40,7 @@ class LaunchEQ(TaskSequence):
         """
         POST a valid UAC
         """
-        with self.client.post("/start/", {"uac": self.case['uac']}, catch_response=True) as response:
+        with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             if self.case["addressLine1"] not in response.text:
                 response.failure(f'response status={response.status_code}, '
                                  f'content {self.case["addressLine1"]} not found')
@@ -55,7 +55,7 @@ class LaunchEQ(TaskSequence):
         """
         POST address confirmation
         """
-        self.client.post("/start/address-confirmation", {"address-check-answer": "Yes"}, allow_redirects=False)
+        self.client.post("/en/start/confirm-address/", {"address-check-answer": "Yes"}, allow_redirects=False)
 
 
 #
@@ -69,25 +69,25 @@ class LaunchEQwithAddressCorrection(TaskSequence):
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
-        response = self.client.get("/start/")
+        response = self.client.get("/en/start/")
 
         
     @seq_task(2)
     def enter_valid_uac(self):
-        response = self.client.post("/start/", {
+        response = self.client.post("/en/start/", {
             'uac': setup.randomly_select_uac()
         })
 
 
     @seq_task(3)
     def select_address_not_correct(self):
-        response = self.client.post("/start/address-confirmation", {
+        response = self.client.post("/en/start/address-confirmation", {
             'address-check-answer': 'No'
         }, allow_redirects=False)
 
     @seq_task(4)
     def correct_address(self):
-        response = self.client.post("/start/address-edit", {
+        response = self.client.post("/en/start/address-edit", {
             'address-line-1': '1 High Street',
             'address-line-2': 'Smithfields',
             'address-line-3': '',
@@ -106,7 +106,7 @@ class request_new_code(TaskSequence):
     # All users arrive at the start page
     @seq_task(1)
     def start_page(self):
-        response = self.client.get("/start/")
+        response = self.client.get("/en/start/")
         
     @seq_task(2)
     def request_new_access_code(self):
@@ -140,7 +140,7 @@ class request_new_code(TaskSequence):
 
     @seq_task(7)
     def start_for_new_uac(self):
-        response = self.client.get("/start/")
+        response = self.client.get("/en/start/")
 
  
 class launch_web_chat(TaskSequence):
@@ -154,7 +154,7 @@ class launch_web_chat(TaskSequence):
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
-        response = self.client.get("/start/")
+        response = self.client.get("/en/start/")
         
     @seq_task(2)
     def start_web_chat(self):
