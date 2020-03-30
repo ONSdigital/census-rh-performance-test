@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: locust-master
-          image: gcr.io/[PROJECT_ID]/locust-tasks
+          image: eu.gcr.io/[PROJECT_ID]/locust-tasks
           imagePullPolicy: Always
           env:
             - name: LOCUST_MODE
