@@ -18,6 +18,13 @@ spec:
         - name: locust-master
           image: eu.gcr.io/[PROJECT_ID]/locust-tasks
           imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "1"
+              memory: 200Mi
+            requests:
+              cpu: "1"
+              memory: 200Mi
           env:
             - name: LOCUST_MODE
               value: master

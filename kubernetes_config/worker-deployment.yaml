@@ -18,6 +18,13 @@ spec:
         - name: locust-worker
           image: gcr.io/[PROJECT_ID]/locust-tasks
           imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1000Mi
+            requests:
+              cpu: "1"
+              memory: 1000Mi
           env:
             - name: LOCUST_MODE
               value: worker
