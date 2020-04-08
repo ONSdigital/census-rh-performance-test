@@ -31,7 +31,7 @@ This and above Run - Local assumes you have RH UI running on port 9092 with all 
 * RH Service
 * Redis
 * RabbitMQ
-e.
+
 In a browser you can launch the Locust GUI at http://localhost:8089
 
 

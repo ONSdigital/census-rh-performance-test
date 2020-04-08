@@ -2,6 +2,8 @@
 
 *~
 .project
+
+# Prevent people accidently committing large test data files
 test_data/event_data.txt
 
 ### Python ###
