@@ -41,7 +41,7 @@ Assumes project and K8 cluster has been created. See Terraform repository.
 Before issuing an Kubertetes commands the following substitutions will be needed:
 * PROJECT\_ID - At the time of writing this is 'census-rh-loadgen' for the performance environment.
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
-* RABBITMQ\_AMQB\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
+* RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
 
 To deploy:
 

@@ -33,4 +33,4 @@ spec:
             - name: TARGET_HOST
               value: [TARGET_HOST]
             - name: RABBITMQ_URL
-              value: [RABBITMQ_AMQB_CONNECTION]
+              value: [RABBITMQ_CONNECTION]
