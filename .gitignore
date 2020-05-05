@@ -1,8 +1,11 @@
 # Created by https://www.gitignore.io
 
 *~
+.project
+
+# Prevent people accidently committing large test data files
+test_data/event_data.txt
 
 ### Python ###
 __pycache__
-.project
-
+.python-version
