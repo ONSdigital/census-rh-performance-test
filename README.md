@@ -11,13 +11,21 @@ For details about using Locust for load testing see https://docs.locust.io/en/st
 
 Clone the repository. Change to the census-rh-performance-test directory where the repository was cloned. Run
 
-1. pipenv shell
-2. locust -f ./locust_tasks/locustfile.py  --host=http://localhost:9092
+    $ pipenv shell
+    $ locust -f ./locust_tasks/locustfile.py  --host=http://localhost:9092
 
 ### Build Docker image and run locally 
 
-docker build -t loadtest .
-docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true loadtest
+To build and publish the docker image CATD recommended:
+
+    $ export PROJECT_ID="census-rh-loadgen"
+    $ gcp rh loadgen
+    $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
+    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:latest
+    
+To run docker locally:
+
+    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true loadtest
 
 This and above Run - Local assumes you have RH UI running on port 9092 with all it's dependencies available:
 * RH Service
@@ -26,30 +34,119 @@ This and above Run - Local assumes you have RH UI running on port 9092 with all 
 
 In a browser you can launch the Locust GUI at http://localhost:8089
 
+
 ### Run - Kubernetes
 Assumes project and K8 cluster has been created. See Terraform repository.
 
-* gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
-* kubectl apply -f kubernetes_config/master-deployment.yaml
-* kubectl apply -f kubernetes_config/master-service.yaml
-* kubectl apply -f kubernetes_config/worker-deployment.yaml
+Before issuing an Kubertetes commands the following substitutions will be needed:
+* PROJECT\_ID - At the time of writing this is 'census-rh-loadgen' for the performance environment.
+* TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
+* RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
+
+To deploy:
+
+    $ gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
+    $ kubectl apply -f kubernetes_config/master-deployment.yaml
+    $ kubectl apply -f kubernetes_config/master-service.yaml
+    $ kubectl apply -f kubernetes_config/worker-deployment.yaml
 
 Remove service, deployment.
-* kubectl delete svc locust-master
-* kubectl delete deployment locust-master
-* kubectl delete deployment locust-worker
+
+    $ kubectl delete svc locust-master
+    $ kubectl delete deployment locust-master
+    $ kubectl delete deployment locust-worker
+
+Once the services have been deployed you should be able to open a browser and go to the Locust master control panel.
+You can launch it from the browser by firstly in GCP switching to the census-rh-loadgen environment. They go to 'Services & Ingress -> locust-master' and click on the port 80 external endpoint.
 
 Remember to remove the k8 cluster to avoid ONS still being charged.
+
+
+### Run - Local Locust against RH in GCP
+
+If you want to run a local Locust to generate traffic for a RH which is deployed in GCP then 
+you'll need a command like:
+
+    $ locust -f locust_tasks/locustfile.py --no-web --clients 750 --hatch-rate 20 --csv-full-history --csv /tmp/rhui.csv --reset-stats --host=http://34.107.206.101
+
+I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust.
+
+It's also a good way of quickly testing changes to locustfile.py.
+
+To avoid misleading statistics it's worth doing a '--reset-stats', so that the stats are cleared down when all clients have been hatched.
+
+### Real world Locust comments
+
+Locust is not a performance measurement tool so it's best to only use its timings for guidance. If you want
+to know if the site is responsive enough then manually run RH whilst the performance test is running. You'll need 
+to be manually judging if the website passes based on a feel for the slowest 10% of transactions.
+
+The usual degradation of RH is:
+
+* RH is super responsive. Pass
+* Starts to get just a little slow. No slow outlying transactions observed. Pass.
+* Slows down just a little, but still quite acceptable. The odd transaction starts taking a noticeable amount of time. Marginal fail.
+* Most interactions too slow. Fail. 
+* Site very slow. Intermittent errors. Fail.
+
+To reduce the chances of intermittent Locust problems (browser app hangs or intermittent 
+errors reported):
+
+* Run workers with a whole cpu allocation.
+* Try not to get workers above about 50% cpu.
+* Make sure master has quite a bit of memory headroom. I needed to frequently restart 
+Locust before increasing its memory.
+
+If the Locust web app is not responding it can sometimes be saved by going back to its 
+entry point (goto the url line and enter return).
+
+Locust may need to be restarted if it:
+* reports an unexpectedly high number of errors, which are not happening when running manually or in a control Locust.
+* reports high max times which are again just don't seem correct.
+* stops responding in the browser.
+
+If Locust needs to be restarted then I don't think there is any shortcut. It's best to 
+scaled down the master and the workers before scaling them both back up.
+
+
+### Other real world testing comments
+
+Avoid taking any measurements of Java processes until the JVM has warmed up. You don't want
+to be comparing the times from a jitted VM against another run with a cold JVM. The warmup
+takes at least 3 minutes under load, and up to 15 minutes on a fractional cpu.
+
+If there is a short term increase in errors then make sure that a RHSVC instance has not been
+restarted (inevitably memory exhausted).
+
+If you are planning to stress one element of the system then you'll want to avoid accidently
+running any other part of the system near peak. The easiest way to be sure of this is to do 
+an initial calibration run by running the system to some level of significant load. You can
+then scale down the service of interest knowing that the rest of the system can comfortably
+cope up to that now calibrated level of load.
+
+The timings on the individual endpoints can be helpful for working out if delays are caused 
+by RHUI or RHSVC. When examining the impact of changes it can be better to monitor the timings
+for the most appropriate endpoint rather than the overall averages.
+
+Locust is driven by the number of simulated users but it can be more helpful to think about the
+load based on some appropriate metric, such as number of launches achieved per second/hour. This is 
+because: 
+
+* The number of users doesn't really always reflect what the system can realistically achieve. When
+the system is under load you can increase the number of users but the number of launches per second 
+goes down (as each request by the simulated user is running a bit slower).
+* The tasks done by the simulated users will surely change and there is a high chance that delay
+between each action taken increases.
 
 
 ### Environment configuration items
 
 There are a number of environment variable configuration items which can be set:
 
-* FILE_NAME default './test_data/event_data.txt' for pre-canned test data
-* RABBITMQ_URL default 'amqp://guest:guest@localhost:6672/'
+* FILE\_NAME default './test\_data/event\_data.txt' for pre-canned test data
+* RABBITMQ\_URL default 'amqp://guest:guest@localhost:6672/'
 * EXCHANGE default 'events'
-* UAC_ROUTING_KEY default 'event.uac.update'
-* CASE_ROUTING_KEY default 'event.case.update'
-* DATA_PUBLISH default false, whether to publish test data to Firestore
+* UAC\_ROUTING\_KEY default 'event.uac.update'
+* CASE\_ROUTING\_KEY default 'event.case.update'
+* DATA\_PUBLISH default false, whether to publish test data to Firestore
 

@@ -13,8 +13,8 @@ logger = logging.getLogger('performance')
 
 class Page(Enum):
     START           = ('<title>Start Census - Census 2021</title>', 
-    				   'Start Census</h1>',
-    				   'Enter the 16 character code'
+                       'Start Census</h1>',
+                       'Enter the 16 character code'
     				  )
     ADDRESS_CORRECT = ('<title>Is this address correct? - Census 2021</title>',
                        '<h1 class="question__title">',
@@ -110,7 +110,7 @@ class LaunchEQInvalidUAC(TaskSequence):
                     logger.error(f'Invalid UAC response status={response.status_code}, content={self.ERROR_PAGE} url="{response.url}" is_redirect="{response.is_redirect}"')
                 else:
                     logger.error(f'Invalid UAC response status={response.status_code}, content={response.text} url="{response.url}" is_redirect="{response.is_redirect}"')
-                
+                self.interrupt()
 
 
 #
@@ -239,7 +239,7 @@ class UserBehavior(TaskSet):
 class WebsiteUser(HttpLocust):
     task_set = UserBehavior
     wait_time = between(1, 2) 
-
+#    wait_time = between(2, 10) # PMB - Reinstate
 
     def setup(self):
         setup()
