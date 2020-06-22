@@ -12,6 +12,10 @@ logger = logging.getLogger('performance')
 
 
 class Page(Enum):
+    ERROR           = ('Sorry, something went wrong',
+                       'id="main-content"',
+                       '<footer'
+                      )
     START           = ('<title>Start Census - Census 2021</title>', 
                        'Start Census</h1>',
                        'Enter the 16 character code'
@@ -21,7 +25,7 @@ class Page(Enum):
                        '<fieldset'
                       )
     EQ_LAUNCHED     = ('302: Found',
-                       '', 
+                       '',
                        ''
                       )
   
@@ -256,13 +260,13 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
 
     # Sanity check for missing response 
     if (resp.text in (None, '')):
-        failure_message = 'Status=' + str(resp.status_code) + '. Empty response!'
+        failure_message = 'Expected to be on the ' + expected_page.name + ' page but got an empty response!'
         report_failure(id, resp, task, failure_message, '')
 
     # Page check
     current_page = identify_page(id, task, resp, resp.text)
     if (current_page != expected_page):
-        failure_message = 'On wrong page. Expected to be on ' + expected_page.name + ' but am on ' + current_page.name + '.'
+        failure_message = 'On wrong page. Expected to be on ' + expected_page.name + ' page but am on ' + current_page.name + ' page.'
         page_extract = extract_key_page_content(id, task, resp, current_page)
         report_failure(id, resp, task, failure_message, page_extract)        
     
