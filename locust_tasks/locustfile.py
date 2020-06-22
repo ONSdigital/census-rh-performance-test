@@ -13,10 +13,14 @@ logger = logging.getLogger('performance')
 
 class Page(Enum):
     START           = ('<title>Start Census - Census 2021</title>', 
-    				   'Start Census</h1>', 
+    				   'Start Census</h1>',
     				   'Enter the 16 character code'
     				  )
     ADDRESS_CORRECT = ('<title>Is this address correct? - Census 2021</title>',
+                       '<h1 class="question__title">',
+                       '<fieldset'
+                      )
+    EQ_LAUNCHED     = ('302: Found',
                        '', 
                        ''
                       )
@@ -54,15 +58,6 @@ class LaunchEQ(TaskSequence):
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             verify_response('LEQ.2', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
-            if self.case["addressLine1"] not in response.text:
-                response.failure(f'response status={response.status_code}, '
-                                 f'content {self.case["addressLine1"]} not found')
-                if self.ERROR_PAGE in response.text:
-                    logger.error(f'response status={response.status_code}, content={self.ERROR_PAGE}')
-                else:
-                    #logger.error(f'response status={response.status_code}, content={response.text}')
-                    logger.error(f'response status={response.status_code}, content={"Page does not contain address"}')
-                self.interrupt()
 
     @seq_task(3)
     def post_address_is_correct(self):
@@ -70,7 +65,8 @@ class LaunchEQ(TaskSequence):
         POST address confirmation
         """
         with self.client.post("/en/start/confirm-address/", {"address-check-answer": "Yes"}, allow_redirects=False, catch_response=True) as response:
-        	logger.error(f'POST address confirmation response code={response.status_code}, content="{response.text}"')
+            verify_response('LEQ.2', self, response, 302, Page.EQ_LAUNCHED)
+        	#logger.error(f'POST address confirmation response code={response.status_code}, content="{response.text}"')
 
 
 class LaunchEQInvalidUAC(TaskSequence):
@@ -248,8 +244,6 @@ class WebsiteUser(HttpLocust):
     def setup(self):
         setup()
 
-def checkResp(id, resp):
-    print ('In checkResp(%s). status:%d' % (id, resp.status_code))
 
 #
 # This function checks that:
@@ -292,21 +286,20 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
     # Content verification
     if (expected_content not in (None, '')):
         if (expected_content not in resp.text):
-            failure_message = 'Page does not contain expected text (' + expected_content + ').'
+            failure_message = current_page.name + ' page does not contain expected text (' + expected_content + ').'
             page_extract = extract_key_page_content(id, task, resp, current_page)
-            report_failure(id, resp, task, failure_message, resp.text)
+            report_failure(id, resp, task, failure_message, page_extract)
     
     print('Check OK')
     
 
 def report_failure(id, resp, task, failure_message, page_content):
-#    print("---------- failure " + page_content)
     error_detail = ''
     if (page_content not in (None, '')):
         error_detail = ' Page content >>> ' + page_content + ' <<<'
 
-    resp.failure(f'ID={id} UAC={task.case["uac"]}. {failure_message}')
-    logger.error(f'ID={id} UAC={task.case["uac"]}. {failure_message}{error_detail}')
+    resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
+    logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
     task.interrupt()
 
 
@@ -327,6 +320,11 @@ def identify_page(id, task, resp, page_content):
     
 
 def extract_key_page_content(id, task, resp, current_page):
+    # Use page content if start/end markers not set for the page
+    if (current_page.extract_start in (None, '') or current_page.extract_end in (None, '')):
+        return clean_text(resp.text)
+        
+    # Grab key page content
     start = resp.text.find(current_page.extract_start)
     end = resp.text.find(current_page.extract_end, start)
     extract = resp.text[start:end]
@@ -335,7 +333,7 @@ def extract_key_page_content(id, task, resp, current_page):
     # Fail if page doesn't contain expected start/end text
     if (start < 0 or end <0):
         failure_message = 'Could not find start/end text on the ' + current_page.name + ' page. Offsets found ' + str(start) + ',' + str(end)
-        report_failure(id, resp, task, failure_message, '')        
+        report_failure(id, resp, task, failure_message, clean_text(resp.text))        
     
     return page_extract
     
