@@ -49,7 +49,7 @@ class LaunchEQ(TaskSequence):
         GET Start page
         """
         with self.client.get('/en/start/', catch_response=True) as response:
-            verify_response('LEQ.1', self, response, 200, Page.START)
+            verify_response('Launch-1', self, response, 200, Page.START)
 
     @seq_task(2)
     def post_uac(self):
@@ -57,7 +57,7 @@ class LaunchEQ(TaskSequence):
         POST a valid UAC
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('LEQ.2', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('Launch-2', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
     @seq_task(3)
     def post_address_is_correct(self):
@@ -65,10 +65,13 @@ class LaunchEQ(TaskSequence):
         POST address confirmation
         """
         with self.client.post("/en/start/confirm-address/", {"address-check-answer": "Yes"}, allow_redirects=False, catch_response=True) as response:
-            verify_response('LEQ.2', self, response, 302, Page.EQ_LAUNCHED)
-        	#logger.error(f'POST address confirmation response code={response.status_code}, content="{response.text}"')
+            verify_response('Launch-3', self, response, 302, Page.EQ_LAUNCHED)
 
 
+#
+# This sequence simulates a user who mistypes their UAC.
+# The incorrect UAC is 16 characters long so it will still trigger the call to RHSvc.
+# 
 class LaunchEQInvalidUAC(TaskSequence):
     """
     Class to represent a user who enters an incorrect UAC.
@@ -87,30 +90,15 @@ class LaunchEQInvalidUAC(TaskSequence):
         GET Start page
         """
         with self.client.get('/en/start/', catch_response=True) as response:
-            if self.UAC_START not in response.text:
-                response.failure(f'Invalid UAC response status={response.status_code}, content {self.UAC_START} not found')
-                if self.ERROR_PAGE in response.text:
-                    logger.error(f'Invalid UAC response status={response.status_code}, content={self.ERROR_PAGE}')
-                else:
-                    logger.error(f'Invalid UAC response status={response.status_code}, content={response.text}')
-                self.interrupt()
+            verify_response('InvalidUAC-1', self, response, 200, Page.START)
 
     @seq_task(2)
     def post_uac(self):
         """
-        POST a valid UAC
+        POST an invalid UAC
         """
         with self.client.post("/en/start/", {"uac": 'ABCD1234ABCD1234'}, catch_response=True) as response:
-            if response.status_code == 401:
-                response.success()
-            else:
-                response.failure(f'Invalid UAC response status={response.status_code}, '
-                                 f'content {self.case["addressLine1"]} not found')
-                if self.ERROR_PAGE in response.text:
-                    logger.error(f'Invalid UAC response status={response.status_code}, content={self.ERROR_PAGE} url="{response.url}" is_redirect="{response.is_redirect}"')
-                else:
-                    logger.error(f'Invalid UAC response status={response.status_code}, content={response.text} url="{response.url}" is_redirect="{response.is_redirect}"')
-                self.interrupt()
+            verify_response('InvalidUAC-2', self, response, 401, Page.START, 'Enter a valid code')
 
 
 #
@@ -121,24 +109,25 @@ class LaunchEQInvalidUAC(TaskSequence):
 #    
 class LaunchEQwithAddressCorrection(TaskSequence):
 
+    def on_start(self):
+        self.case = randomly_select_uac()
+
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
-        response = self.client.get("/en/start/")
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('AddrCorrection-1', self, response, 200, Page.START)
 
         
     @seq_task(2)
     def enter_valid_uac(self):
-        response = self.client.post("/en/start/", {
-            'uac': setup.randomly_select_uac()
-        })
-
+        with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
+            verify_response('AddrCorrection-2', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
     @seq_task(3)
     def select_address_not_correct(self):
-        response = self.client.post("/en/start/address-confirmation", {
-            'address-check-answer': 'No'
-        }, allow_redirects=False)
+        with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False, catch_response=True) as response:
+            verify_response('AddrCorrection-3', self, response, 200, Page.ADDRESS_CORRECT)
 
     @seq_task(4)
     def correct_address(self):
@@ -149,6 +138,7 @@ class LaunchEQwithAddressCorrection(TaskSequence):
             'address-town': 'Exeter',
             'address-postcode': 'EX'
         }, allow_redirects=False)
+        verify_response('AddrCorrection-4', self, response, 200, Page.ADDRESS_CORRECT, 'PMB')
 
 
 #
@@ -231,54 +221,53 @@ class UserBehavior(TaskSet):
     """
     
     tasks = {
-        LaunchEQ: 1,
-		LaunchEQInvalidUAC: 0
+        LaunchEQ: 100,
+        LaunchEQInvalidUAC: 0,
+        LaunchEQwithAddressCorrection: 0,
+        request_new_code: 0,
+        launch_web_chat: 0
     }
 
 
 class WebsiteUser(HttpLocust):
     task_set = UserBehavior
-    wait_time = between(1, 2) 
-#    wait_time = between(2, 10) # PMB - Reinstate
+    wait_time = between(2, 10)
 
     def setup(self):
         setup()
 
 
 #
-# This function checks that:
+# This function should be called after each page transition as it aims to aggressively check that:
 #   - The current page is the expected page.
 #   - The actual http response status matches the expected status.
 #   - Optionally verifies that key content exists on the current page.
 #
-# In the event of failure it attempts to:
-#   - Supply key debugging information, such as step ID & the UAC, to aid with debugging.
+# In the event of failure it:
+#   - Reports key debugging information, such as step ID & the UAC, to aid with debugging.
 #   - For the error log it records the failure message and key content of the current page.
 #   - Aborts the current task.
 #
 def verify_response(id, task, resp, expected_status, expected_page, expected_content=''):
-    print ('In verify_response(%s). Expected:%3d actual:%3d expected_page:%s' % (id, expected_status, resp.status_code, expected_page))
-    print ('  URL:%s' % (resp.url))
-    print ('  status:%d' % (resp.status_code))
-    print ('  Expected page title:%s' % (expected_page.title))
+    # print ('In verify_response(%s). Expected:%3d actual:%3d expected_page:%s' % (id, expected_status, resp.status_code, expected_page))
+    # print ('  URL:%s' % (resp.url))
+    # print ('  status:%d' % (resp.status_code))
+    # print ('  Expected page title:%s' % (expected_page.title))
 
     # Sanity check for missing response 
     if (resp.text in (None, '')):
-        print("..EMTPY")
         failure_message = 'Status=' + str(resp.status_code) + '. Empty response!'
         report_failure(id, resp, task, failure_message, '')
 
     # Page check
     current_page = identify_page(id, task, resp, resp.text)
     if (current_page != expected_page):
-        print('..WRONG PAGE')
         failure_message = 'On wrong page. Expected to be on ' + expected_page.name + ' but am on ' + current_page.name + '.'
         page_extract = extract_key_page_content(id, task, resp, current_page)
         report_failure(id, resp, task, failure_message, page_extract)        
     
     # Status check
     if (expected_status != resp.status_code):
-        print('..STATUS FAILURE')
         failure_message = 'Status mismatch. Expected ' + str(expected_status) + ' but was ' + str(resp.status_code) + '.'
         page_extract = extract_key_page_content(id, task, resp, current_page)
         report_failure(id, resp, task, failure_message, page_extract)        
@@ -290,9 +279,13 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
             page_extract = extract_key_page_content(id, task, resp, current_page)
             report_failure(id, resp, task, failure_message, page_extract)
     
-    print('Check OK')
+    resp.success()
     
-
+#
+# Reports a test failure:
+#   - the error is reported to Locust
+#   - an error is logged with either whole or partial page content
+#
 def report_failure(id, resp, task, failure_message, page_content):
     error_detail = ''
     if (page_content not in (None, '')):
@@ -302,16 +295,15 @@ def report_failure(id, resp, task, failure_message, page_content):
     logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
     task.interrupt()
 
-
+# 
+# Identifies the current page based on its content.
+# It returns a Page enum value if the page can be identified, or fails the test if it cannot.
+#
 def identify_page(id, task, resp, page_content):
-    #print('Identify page')
     page_content=resp.text
-    #print(page_content)
     
     for page in Page:
-        #print(page.title)
         if (page.title in page_content):
-            print(f'{id} Identified page: {page.name}')
             return page
  
     # Identification failed
@@ -319,6 +311,12 @@ def identify_page(id, task, resp, page_content):
     report_failure(id, resp, task, failure_message, clean_text(page_content))
     
 
+#
+# Returns the key content for the current page.
+# If the enum data for the current_page doesn't have start and end markers set then
+# the whole page content is returned.
+# Excess blank lines are removed to help condense the output.
+#
 def extract_key_page_content(id, task, resp, current_page):
     # Use page content if start/end markers not set for the page
     if (current_page.extract_start in (None, '') or current_page.extract_end in (None, '')):
@@ -338,6 +336,6 @@ def extract_key_page_content(id, task, resp, current_page):
     return page_extract
     
 
-# Removes blank lines from supplied text    
+# Removes blank lines from supplied text
 def clean_text(text):
     return re.sub(r'\n\s*\n', '\n', text, flags=re.MULTILINE)
