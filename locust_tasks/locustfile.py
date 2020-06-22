@@ -11,8 +11,11 @@ from locust_tasks.setup import setup, randomly_select_uac
 logger = logging.getLogger('performance')
 
 
+#
+# This enum defines the applications pages
+# 
 class Page(Enum):
-    ERROR           = ('Sorry, something went wrong',
+    ERROR           = ('<title>Error - Census 2021</title>',
                        'id="main-content"',
                        '<footer'
                       )
@@ -39,9 +42,6 @@ class LaunchEQ(TaskSequence):
     """
     Class to represent a user entering a UAC and launching EQ.
     """
-
-    UAC_START = 'Start Census'
-    ERROR_PAGE = 'Sorry, something went wrong'
 
     def on_start(self):
         self.case = randomly_select_uac()
@@ -80,9 +80,6 @@ class LaunchEQInvalidUAC(TaskSequence):
     """
     Class to represent a user who enters an incorrect UAC.
     """
-
-    UAC_START = 'Start Census'
-    ERROR_PAGE = 'Sorry, something went wrong'
 
     def on_start(self):
         self.case = randomly_select_uac()
