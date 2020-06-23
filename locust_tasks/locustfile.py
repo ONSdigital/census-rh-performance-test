@@ -12,7 +12,14 @@ logger = logging.getLogger('performance')
 
 
 #
-# This enum defines the applications pages
+# This enum defines the applications pages.
+#
+# To identify pages each entry must define some 'title' text, which should only appear on that 
+# particular page.
+#
+# If the page specifies some text extract_start/end then the text within this range will be
+# used in the error message to help debug what has gone wrong. 
+# If the extract start/end is not specified then the whole page will be added to the error message.
 # 
 class Page(Enum):
     ERROR           = ('<title>Error - Census 2021</title>',
