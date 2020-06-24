@@ -64,6 +64,8 @@ Remember to remove the k8 cluster to avoid ONS still being charged.
 
 ### Run - Local Locust against RH in GCP
 
+I'm not sure of the minimum Python version that is needed to run Locust but I've been running it with Python 3.7.5.
+
 Before attempting a local run you'll need to create some test data and start the shell:
 
 	$ cd census-rh-performance-test
