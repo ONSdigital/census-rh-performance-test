@@ -62,20 +62,15 @@ You can launch it from the browser by firstly in GCP switching to the census-rh-
 Remember to remove the k8 cluster to avoid ONS still being charged.
 
 
-### Run - Local Locust against RH in GCP
+### Run - Local Locust for local RH
 
-I'm not sure of the minimum Python version that is needed to run Locust but I've been running it with Python 3.7.5.
+It's probably best to use the latest 3.7.x version of Python to locally run Locust. It's known to work on 3.7.5 but the status for earlier versions is unknown.
 
 Before attempting a local run you'll need to create some test data and start the shell:
 
 	$ cd census-rh-performance-test
 	$ cp test_data/example_event_data.2.txt test_data/event_data.txt 
 	$ pipenv shell
-
-If you want to run a local Locust to generate traffic for a RH which is deployed in GCP then 
-you'll need a command like:
-
-    $ locust -f locust_tasks/locustfile.py --no-web --clients 750 --hatch-rate 20 --csv-full-history --csv /tmp/rhui.csv --reset-stats --host=http://34.107.206.101
 
 To do a command line run against a local RH:
 	
@@ -84,6 +79,15 @@ To do a command line run against a local RH:
 To run in the browser firstly start Locust and then point the browser at the Locust control panel: http://localhost:8089/
 
 	$ locust -f locust_tasks/locustfile.py --host http://localhost:9092
+
+### Run - Local Locust against RH in GCP
+
+As before you'll probably need to be running the latest Python 3.7.x. 
+
+To run a local Locust to generate traffic for a RH which is deployed in GCP then 
+you'll need a command like:
+
+    $ locust -f locust_tasks/locustfile.py --no-web --clients 750 --hatch-rate 20 --csv-full-history --csv /tmp/rhui.csv --reset-stats --host=http://34.107.206.101
 
 I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust.
 
