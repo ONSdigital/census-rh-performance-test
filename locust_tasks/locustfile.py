@@ -145,7 +145,7 @@ class LaunchEQwithAddressCorrection(TaskSequence):
 
     @seq_task(4)
     def correct_address(self):
-        self.client.post("/en/start/address-edit", {
+        response = self.client.post("/en/start/address-edit", {
             'address-line-1': '1 High Street',
             'address-line-2': 'Smithfields',
             'address-line-3': '',
