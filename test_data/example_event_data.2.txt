@@ -1,4 +1,12 @@
-uac,active,questionnaireId,caseType,region,uprn,addressLine1,addressLine2,addressLine3,townName,postcode,latitude,longitude
-zq5t9z7jmfbbl28f,,,,,, 670 fo8o1vruuzhllu n11d1roqr,,,,,,
-y2pb2hd6b36n2thy,,,,,,rsrehzrz2g7w7591 mee 0a6s,,,,,,
-h82r7vl2gwnr65qk,,,,,,c6zzwxw5kurh kj 5 ,,,,,,
+uac,addressLine1,postcode
+QBTD3NKTGQ2BHV42,10 Maes-yr-eirlys, CF31 5DG
+CMS5QN37TT7GH7VJ,Bedsit 7, CR2 7DP
+PDP68T84QW7ZK8JR,84 Todd Lane North, PR5 5UQ
+LQDRTF7ZZ56FP7TD,184 Broadstone Road, SK4 5HW
+JQ3PJCKGSYH8MHN4,Unit 3, B9 4AX
+WL7PM2R442WKJJZD,3 Darland Lane, LL12 0EL
+YDW2S4SB3XSF499V,37G Warrington Crescent, W9 1EJ
+L7R22WZM2MK7K5BT,First Floor Flat, N8 7BX
+C2PM52XWMSZDJ3BR,71, HX1 5DS
+SSL3YX2DCP2977MG,5 Ainsworth Road, B31 3BQ
+5PZ7CXM55DM7ZY8H,Penthouse 1, EC1V 3QG
