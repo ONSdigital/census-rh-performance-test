@@ -2,11 +2,12 @@ import pika
 import csv
 import datetime
 import hashlib
+import sys
 
 from uuid import uuid4
 from random import randrange
 
-from . import FILE_NAME, RABBITMQ_URL, EXCHANGE, UAC_ROUTING_KEY, CASE_ROUTING_KEY, DATA_PUBLISH
+from . import FILE_NAME, RABBITMQ_URL, EXCHANGE, UAC_ROUTING_KEY, CASE_ROUTING_KEY, DATA_PUBLISH, INSTANCE_NUM, MAX_INSTANCES
 
 case_ref = 84000000
 cases = []
@@ -22,31 +23,81 @@ def setup():
     """
 
     global cases
+
     if DATA_PUBLISH:
-        parameters = pika.URLParameters(RABBITMQ_URL)
-        connection = pika.BlockingConnection(parameters)
-        channel = connection.channel()
+        publish_test_data()
+
+    num_event_rows = get_num_event_data_records()
+    sys.stdout.write('num lines: %d\n' % num_event_rows)
+    (first_record, last_record) = calculate_section_of_event_data_file(num_event_rows)            
+    read_event_data(first_record, last_record)
+
+
+def publish_test_data():
+    parameters = pika.URLParameters(RABBITMQ_URL)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
 
     with open(FILE_NAME, 'r') as infile:
         reader = csv.DictReader(infile)
         for line in reader:
-            if DATA_PUBLISH:
-                case_id =  str(uuid4())
-                collection_exercise_id = str(uuid4())
+            case_id =  str(uuid4())
+            collection_exercise_id = str(uuid4())
 
-                uac_event = uac_event_builder(line, case_id, collection_exercise_id)
-                channel.basic_publish(exchange=EXCHANGE,
-                                      routing_key=UAC_ROUTING_KEY,
-                                      body=uac_event)
+            uac_event = uac_event_builder(line, case_id, collection_exercise_id)
+            channel.basic_publish(exchange=EXCHANGE,
+                                  routing_key=UAC_ROUTING_KEY,
+                                  body=uac_event)
             
-                case_event = case_event_builder(line, case_id, collection_exercise_id)
-                channel.basic_publish(exchange=EXCHANGE,
-                                      routing_key=CASE_ROUTING_KEY,
-                                      body=case_event)
-            cases.append(line)
+            case_event = case_event_builder(line, case_id, collection_exercise_id)
+            channel.basic_publish(exchange=EXCHANGE,
+                                  routing_key=CASE_ROUTING_KEY,
+                                  body=case_event)
 
-    if DATA_PUBLISH:
-        connection.close()
+    connection.close()
+
+
+def get_num_event_data_records():
+    lines = 0
+    for line in open(FILE_NAME):
+        lines += 1
+        
+    # Actual number of records is one less due to header line
+    return lines - 1
+
+    
+def calculate_section_of_event_data_file(number_records):
+    # Verify env.variables set
+    if INSTANCE_NUM is None:
+        sys.exit("ERROR: Environment variable 'INSTANCE_NUM' has not been set")
+    if MAX_INSTANCES is None:
+        sys.exit("ERROR: Environment variable 'MAX_INSTANCES' has not been set")
+
+    # Convert from strings
+    instance_num = int(INSTANCE_NUM)
+    max_instances = int(MAX_INSTANCES)
+    
+    # Sanity check the instance settings
+    # PMB TODO
+
+    # Calculate range of file owned by this instance
+    records_per_instance = number_records / max_instances
+    first_record = int(records_per_instance * (instance_num-1))
+    last_record = int(records_per_instance * (instance_num)) -1
+
+    sys.stdout.write('Instance %d/%d: Event range: %d...%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
+
+    return (first_record, last_record)
+    
+
+def read_event_data(first_record, last_record):
+    with open(FILE_NAME, 'r') as infile:
+        reader = csv.DictReader(infile)
+        line_number = 0
+        for line in reader:
+            if line_number >= first_record and line_number <= last_record:
+                cases.append(line)
+            line_number += 1
 
 
 def uac_event_builder(line, case_id, collection_exercise_id):

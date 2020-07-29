@@ -6,4 +6,5 @@ EXCHANGE = os.getenv('EXCHANGE') or 'events'
 UAC_ROUTING_KEY = os.getenv('UAC_ROUTING_KEY') or 'event.uac.update'
 CASE_ROUTING_KEY = os.getenv('CASE_ROUTING_KEY') or 'event.case.update'
 DATA_PUBLISH = os.getenv('DATA_PUBLISH') == 'true'
-
+INSTANCE_NUM = os.getenv('INSTANCE_NUM') or None
+MAX_INSTANCES = os.getenv('MAX_INSTANCES') or None
