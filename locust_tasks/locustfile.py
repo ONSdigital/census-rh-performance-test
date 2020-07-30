@@ -6,7 +6,7 @@ from enum import Enum
 from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
 
 sys.path.append(os.getcwd())
-from locust_tasks.setup import setup, randomly_select_uac
+from locust_tasks.setup import setup, get_next_case
 
 logger = logging.getLogger('performance')
 
@@ -56,15 +56,14 @@ class LaunchEQ(TaskSequence):
     Class to represent a user entering a UAC and launching EQ.
     """
 
-    def on_start(self):
-        self.case = randomly_select_uac()
-
     # assume all users arrive at the start page
     @seq_task(1)
     def get_uac(self):
         """
         GET Start page
         """
+        self.case = get_next_case()
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
@@ -75,6 +74,7 @@ class LaunchEQ(TaskSequence):
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @seq_task(3)
     def post_address_is_correct(self):
@@ -93,9 +93,6 @@ class LaunchEQInvalidUAC(TaskSequence):
     """
     Class to represent a user who enters an incorrect UAC.
     """
-
-    def on_start(self):
-        self.case = randomly_select_uac()
 
     # assume all users arrive at the start page
     @seq_task(1)
@@ -123,12 +120,11 @@ The address correction exercises different backend code.
 """    
 class LaunchEQwithAddressCorrection(TaskSequence):
 
-    def on_start(self):
-        self.case = randomly_select_uac()
-
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
+        self.case = get_next_case()
+    
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 

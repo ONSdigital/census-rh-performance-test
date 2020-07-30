@@ -11,10 +11,26 @@ from . import FILE_NAME, RABBITMQ_URL, EXCHANGE, UAC_ROUTING_KEY, CASE_ROUTING_K
 
 case_ref = 84000000
 cases = []
+next_case_index = 0
 
 
-def randomly_select_uac():
-    return cases[randrange(len(cases))]
+def get_next_case():
+    """
+    Gets the next case to be used.
+    :return: Case data, with a UAC that should be in Firestore.
+    """
+
+    global next_case_index
+
+    next_case = cases[next_case_index]
+#    sys.stdout.write('NEXT: %d %s\n' % (next_case_index, next_case['uac']))
+        
+    next_case_index += 1
+    if next_case_index >= len(cases):
+        sys.stdout.write('WARNING: All cases used. Wrapping around back to start of collection')
+        next_case_index = 0
+    
+    return next_case
 
 
 def setup():
@@ -27,9 +43,11 @@ def setup():
     if DATA_PUBLISH:
         publish_test_data()
 
+    # Read in section of event data file for the current instance
     num_event_rows = get_num_event_data_records()
     (first_record, last_record) = calculate_section_of_event_data_file(num_event_rows)            
     read_event_data(first_record, last_record)
+    next_case_index = 0
 
 
 def get_num_event_data_records():
@@ -68,7 +86,7 @@ def calculate_section_of_event_data_file(number_records):
     if instance_num < 1 or instance_num > max_instances:
         sys.stdout.write('ERROR: Invalid instance number: %d. Must be in the range 1...%d\n' % (instance_num, max_instances))
         sys.exit(-1)
-    if max_instances < number_records:
+    if number_records < max_instances:
         sys.exit("ERROR: Event data file too small. There must be at least one worker instance per record in the file") 
 
     # Calculate range of file owned by this instance
