@@ -16,16 +16,17 @@ Clone the repository. Change to the census-rh-performance-test directory where t
 
 ### Build Docker image and run locally 
 
-To build and publish the docker image CATD recommended:
+To build a new docker image:
 
-    $ export PROJECT_ID="census-rh-loadgen"
-    $ gcp rh loadgen
-    $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
-    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:latest
+    $ docker build --tag loadtest:latest .
     
 To run docker locally:
 
-    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true loadtest
+    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e DATA_PUBLISH=false -e INSTANCE_NUM=1 -e MAX_INSTANCES=1 loadtest
+
+If you want the test code to publish the test data to RH on startup then you'll need to set the RABBITMQ\_URL and DATA\_PUBLISH environment variables: 
+ 
+    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true -e INSTANCE_NUM=1 -e MAX_INSTANCES=1 loadtest
 
 This and above Run - Local assumes you have RH UI running on port 9092 with all it's dependencies available:
 * RH Service
@@ -42,6 +43,13 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * PROJECT\_ID - At the time of writing this is 'census-rh-loadgen' for the performance environment.
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
+
+To build and publish the docker image CATD recommended:
+
+    $ export PROJECT_ID="census-rh-loadgen"
+    $ gcp rh loadgen
+    $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
+    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:latest
 
 To deploy:
 
