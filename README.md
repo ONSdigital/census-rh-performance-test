@@ -177,4 +177,7 @@ There are a number of environment variable configuration items which can be set:
 * UAC\_ROUTING\_KEY default 'event.uac.update'
 * CASE\_ROUTING\_KEY default 'event.case.update'
 * DATA\_PUBLISH default false, whether to publish test data to Firestore
-
+* INSTANCE\_NUM no default. Is the instance number for the current run. The Locust test will read
+its own section of the event data file. For example if the event data file has 100 cases and this is 
+instance 3 of 4 then it will only read cases 51 to 75 and sequentially use these during testing.
+* MAX\_INSTANCES no default. This is the number of workers that will be sharing the event data file. 
