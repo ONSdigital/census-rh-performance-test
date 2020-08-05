@@ -106,6 +106,9 @@ It's also a good way of quickly testing changes to locustfile.py.
 
 To avoid misleading statistics it's worth doing a '--reset-stats', so that the stats are cleared down when all clients have been hatched.
 
+To **debug** errors look at the detailed failure information in the locust-worker logs. If the failure is reproducible
+then it's usually easiest to run a local locust against the failing RH in census-rh-performance. 
+
 ### Real world Locust comments
 
 Locust is not a performance measurement tool so it's best to only use its timings for guidance. If you want
