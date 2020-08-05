@@ -44,22 +44,25 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
 
-To build and publish the docker image CATD recommended:
+To build and publish the docker image CATD recommended (where TAG\_NAME is set to something like "CR-123_V1"):
 
     $ export PROJECT_ID="census-rh-loadgen"
-    $ gcp rh loadgen
+    $ export TAG_NAME=<TBD>
     $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
-    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:latest
+    $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
+    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
 
 To deploy:
 
     $ gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
+    $ gcp rh loadgen
     $ kubectl apply -f kubernetes_config/master-deployment.yaml
     $ kubectl apply -f kubernetes_config/master-service.yaml
     $ kubectl apply -f kubernetes_config/worker-deployment.yaml
 
 Remove service, deployment.
 
+    $ gcp rh loadgen
     $ kubectl delete svc locust-master
     $ kubectl delete deployment locust-master
     $ kubectl delete deployment locust-worker
