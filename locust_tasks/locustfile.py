@@ -2,6 +2,7 @@ import sys
 import os
 import re
 import logging
+import time
 from enum import Enum
 from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
 
@@ -26,11 +27,11 @@ class Page(Enum):
                        'id="main-content"',
                        '<footer'
                       )
-    START           = ('<title>Start Census - Census 2021</title>', 
+    START           = ('<title>Start census - Census 2021</title>',
                        'Start Census</h1>',
                        'Enter the 16 character code'
     				  )
-    ADDRESS_CORRECT = ('<title>Is this address correct? - Census 2021</title>',
+    ADDRESS_CORRECT = ('<title>Is this the correct address? - Census 2021</title>',
                        '<h1 class="question__title">',
                        '<fieldset'
                       )
@@ -304,6 +305,10 @@ def report_failure(id, resp, task, failure_message, page_content):
 
     resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
     logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
+    
+    # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
+    time.sleep(5.0)
+    
     task.interrupt()
 
 
@@ -317,12 +322,11 @@ def identify_page(id, task, resp):
     for page in Page:
         if page.title in page_content:
             return page
- 
+
     # Identification failed
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
     
-
 """
 Returns the key content for the current page.
 If the enum data for the current_page doesn't have start and end markers set then
