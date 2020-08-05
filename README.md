@@ -54,7 +54,6 @@ To build and publish the docker image CATD recommended (where TAG\_NAME is set t
 
 To deploy:
 
-    $ gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
     $ gcp rh loadgen
     $ kubectl apply -f kubernetes_config/master-deployment.yaml
     $ kubectl apply -f kubernetes_config/master-service.yaml
