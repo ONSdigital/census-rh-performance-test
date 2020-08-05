@@ -23,10 +23,6 @@ used in the error message to help debug what has gone wrong.
 If the extract start/end is not specified then the whole page will be added to the error message.
 """ 
 class Page(Enum):
-    ERROR           = ('<title>Error - Census 2021</title>',
-                       'id="main-content"',
-                       '<footer'
-                      )
     START           = ('<title>Start census - Census 2021</title>',
                        'Start Census</h1>',
                        'Enter the 16 character code'
@@ -39,6 +35,19 @@ class Page(Enum):
                        '',
                        ''
                       )
+    ERROR           = ('<title>Error - Census 2021</title>',
+                       'id="main-content"',
+                       '<footer'
+                      )
+    ERROR_502       = ('<title>502 Server Error</title>',
+                       '',
+                       ''
+                      )
+    ERROR_GENERIC   = ('<h1>Error: Server Error</h1>',
+                       '',
+                       ''
+                      )
+
   
     def __init__(self, title, extract_start, extract_end):
         self.title = title
