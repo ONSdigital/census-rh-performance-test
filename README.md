@@ -60,7 +60,7 @@ To deploy:
     $ kubectl apply -f kubernetes_config/master-service.yaml
     $ kubectl apply -f kubernetes_config/worker-deployment.yaml
 
-Remove service, deployment.
+To delete Locust deployment:
 
     $ gcp rh loadgen
     $ kubectl delete svc locust-master

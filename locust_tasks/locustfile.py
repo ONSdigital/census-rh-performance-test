@@ -285,6 +285,10 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
     
     # Content verification
     if expected_content:
+        # Convert expected apostrophes to HTML equivalent
+        if "'" in expected_content:
+            expected_content = expected_content.replace("'", "&#39;")
+        # Check page content
         if expected_content not in resp.text:
             failure_message = f'{current_page.name} page does not contain expected text ({expected_content}).'
             page_extract = extract_key_page_content(id, task, resp, current_page)
