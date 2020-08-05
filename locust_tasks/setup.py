@@ -3,6 +3,7 @@ import csv
 import datetime
 import hashlib
 import sys
+import logging
 
 from uuid import uuid4
 from random import randrange
@@ -12,6 +13,8 @@ from . import FILE_NAME, RABBITMQ_URL, EXCHANGE, UAC_ROUTING_KEY, CASE_ROUTING_K
 case_ref = 84000000
 cases = []
 next_case_index = 0
+
+logger = logging.getLogger('performance')
 
 
 def get_next_case():
@@ -94,7 +97,7 @@ def calculate_section_of_event_data_file(number_records):
     first_record = int(records_per_instance * (instance_num-1))
     last_record = int(records_per_instance * (instance_num)) -1
 
-    sys.stdout.write('Instance %d/%d: Event range: %d...%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
+    logger.info('Instance %d/%d: Event range: %d...%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
 
     return (first_record, last_record)
     
