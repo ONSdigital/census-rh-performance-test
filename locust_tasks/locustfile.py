@@ -2,11 +2,12 @@ import sys
 import os
 import re
 import logging
+import time
 from enum import Enum
 from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
 
 sys.path.append(os.getcwd())
-from locust_tasks.setup import setup, randomly_select_uac
+from locust_tasks.setup import setup, get_next_case
 
 logger = logging.getLogger('performance')
 
@@ -22,15 +23,11 @@ used in the error message to help debug what has gone wrong.
 If the extract start/end is not specified then the whole page will be added to the error message.
 """ 
 class Page(Enum):
-    ERROR           = ('<title>Error - Census 2021</title>',
-                       'id="main-content"',
-                       '<footer'
-                      )
-    START           = ('<title>Start Census - Census 2021</title>', 
+    START           = ('<title>Start census - Census 2021</title>',
                        'Start Census</h1>',
                        'Enter the 16 character code'
     				  )
-    ADDRESS_CORRECT = ('<title>Is this address correct? - Census 2021</title>',
+    ADDRESS_CORRECT = ('<title>Is this the correct address? - Census 2021</title>',
                        '<h1 class="question__title">',
                        '<fieldset'
                       )
@@ -38,6 +35,19 @@ class Page(Enum):
                        '',
                        ''
                       )
+    ERROR           = ('<title>Error - Census 2021</title>',
+                       'id="main-content"',
+                       '<footer'
+                      )
+    ERROR_502       = ('<title>502 Server Error</title>',
+                       '',
+                       ''
+                      )
+    ERROR_GENERIC   = ('<h1>Error: Server Error</h1>',
+                       '',
+                       ''
+                      )
+
   
     def __init__(self, title, extract_start, extract_end):
         self.title = title
@@ -56,15 +66,14 @@ class LaunchEQ(TaskSequence):
     Class to represent a user entering a UAC and launching EQ.
     """
 
-    def on_start(self):
-        self.case = randomly_select_uac()
-
     # assume all users arrive at the start page
     @seq_task(1)
     def get_uac(self):
         """
         GET Start page
         """
+        self.case = get_next_case()
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
@@ -75,6 +84,7 @@ class LaunchEQ(TaskSequence):
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @seq_task(3)
     def post_address_is_correct(self):
@@ -93,9 +103,6 @@ class LaunchEQInvalidUAC(TaskSequence):
     """
     Class to represent a user who enters an incorrect UAC.
     """
-
-    def on_start(self):
-        self.case = randomly_select_uac()
 
     # assume all users arrive at the start page
     @seq_task(1)
@@ -123,12 +130,11 @@ The address correction exercises different backend code.
 """    
 class LaunchEQwithAddressCorrection(TaskSequence):
 
-    def on_start(self):
-        self.case = randomly_select_uac()
-
     # assume all users arrive at the start page
     @seq_task(1)
     def start_page(self):
+        self.case = get_next_case()
+    
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
@@ -288,6 +294,10 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
     
     # Content verification
     if expected_content:
+        # Convert expected apostrophes to HTML equivalent
+        if "'" in expected_content:
+            expected_content = expected_content.replace("'", "&#39;")
+        # Check page content
         if expected_content not in resp.text:
             failure_message = f'{current_page.name} page does not contain expected text ({expected_content}).'
             page_extract = extract_key_page_content(id, task, resp, current_page)
@@ -308,6 +318,11 @@ def report_failure(id, resp, task, failure_message, page_content):
 
     resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
     logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
+    
+    # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
+    # Note that this sleep does not affect the progress of other tasks
+    time.sleep(5.0)
+    
     task.interrupt()
 
 
@@ -321,12 +336,11 @@ def identify_page(id, task, resp):
     for page in Page:
         if page.title in page_content:
             return page
- 
+
     # Identification failed
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
     
-
 """
 Returns the key content for the current page.
 If the enum data for the current_page doesn't have start and end markers set then

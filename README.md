@@ -16,16 +16,17 @@ Clone the repository. Change to the census-rh-performance-test directory where t
 
 ### Build Docker image and run locally 
 
-To build and publish the docker image CATD recommended:
+To build a new docker image:
 
-    $ export PROJECT_ID="census-rh-loadgen"
-    $ gcp rh loadgen
-    $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
-    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:latest
+    $ docker build --tag loadtest:latest .
     
 To run docker locally:
 
-    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true loadtest
+    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e DATA_PUBLISH=false -e INSTANCE_NUM=1 -e MAX_INSTANCES=1 loadtest
+
+If you want the test code to publish the test data to RH on startup then you'll need to set the RABBITMQ\_URL and DATA\_PUBLISH environment variables: 
+ 
+    $ docker run -d -p 5557:5557 -p 5558:5558 -p 8089:8089 -e TARGET_HOST=http://host.docker.internal:9092 -e RABBITMQ_URL=amqp://guest:guest@host.docker.internal:6672 -e DATA_PUBLISH=true -e INSTANCE_NUM=1 -e MAX_INSTANCES=1 loadtest
 
 This and above Run - Local assumes you have RH UI running on port 9092 with all it's dependencies available:
 * RH Service
@@ -43,15 +44,28 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
 
+To make sure that your test run is using the correct version of the Locust tests with your version of the 
+event_data you'll need to build and publish a docker image. To make sure that the correct image is deployed it
+is tagged with a string based on the CR number. ie, TAG\_NAME is set to something like "CR-123_V1".
+
+To build and publish the docker image CATD recommended:
+
+    $ export PROJECT_ID="census-rh-loadgen"
+    $ export TAG_NAME=<TBD>
+    $ docker build -t eu.gcr.io/${PROJECT_ID}/locust-tasks .
+    $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
+    $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
+
 To deploy:
 
-    $ gcloud builds submit --tag gcr.io/[PROJECT_ID]/locust-tasks:latest
+    $ gcp rh loadgen
     $ kubectl apply -f kubernetes_config/master-deployment.yaml
     $ kubectl apply -f kubernetes_config/master-service.yaml
     $ kubectl apply -f kubernetes_config/worker-deployment.yaml
 
-Remove service, deployment.
+To delete Locust deployment:
 
+    $ gcp rh loadgen
     $ kubectl delete svc locust-master
     $ kubectl delete deployment locust-master
     $ kubectl delete deployment locust-worker
@@ -94,6 +108,9 @@ I've found running, say, 5% of traffic locally a good way to differentiate betwe
 It's also a good way of quickly testing changes to locustfile.py.
 
 To avoid misleading statistics it's worth doing a '--reset-stats', so that the stats are cleared down when all clients have been hatched.
+
+To **debug** errors look at the detailed failure information in the locust-worker logs. If the failure is reproducible
+then it's usually easiest to run a local locust against the failing RH in census-rh-performance. 
 
 ### Real world Locust comments
 
@@ -169,4 +186,7 @@ There are a number of environment variable configuration items which can be set:
 * UAC\_ROUTING\_KEY default 'event.uac.update'
 * CASE\_ROUTING\_KEY default 'event.case.update'
 * DATA\_PUBLISH default false, whether to publish test data to Firestore
-
+* INSTANCE\_NUM no default. Is the instance number for the current run. The Locust test will read
+its own section of the event data file. For example if the event data file has 100 cases and this is 
+instance 3 of 4 then it will only read cases 51 to 75 and sequentially use these during testing.
+* MAX\_INSTANCES no default. This is the number of workers that will be sharing the event data file. 
