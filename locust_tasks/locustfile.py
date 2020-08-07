@@ -320,6 +320,7 @@ def report_failure(id, resp, task, failure_message, page_content):
     logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
     
     # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
+    # Note that this sleep does not affect the progress of other tasks
     time.sleep(5.0)
     
     task.interrupt()

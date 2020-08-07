@@ -6,7 +6,6 @@ import sys
 import logging
 
 from uuid import uuid4
-from random import randrange
 
 from . import FILE_NAME, RABBITMQ_URL, EXCHANGE, UAC_ROUTING_KEY, CASE_ROUTING_KEY, DATA_PUBLISH, INSTANCE_NUM, MAX_INSTANCES
 
@@ -26,7 +25,6 @@ def get_next_case():
     global next_case_index
 
     next_case = cases[next_case_index]
-#    sys.stdout.write('NEXT: %d %s\n' % (next_case_index, next_case['uac']))
         
     next_case_index += 1
     if next_case_index >= len(cases):
@@ -50,7 +48,6 @@ def setup():
     num_event_rows = get_num_event_data_records()
     (first_record, last_record) = calculate_section_of_event_data_file(num_event_rows)            
     read_event_data(first_record, last_record)
-    next_case_index = 0
 
 
 def get_num_event_data_records():
@@ -60,7 +57,7 @@ def get_num_event_data_records():
     """
 
     lines = 0
-    for line in open(FILE_NAME):
+    for _ in open(FILE_NAME):
         lines += 1
         
     # Actual number of records is one less due to header line
@@ -99,7 +96,7 @@ def calculate_section_of_event_data_file(number_records):
 
     logger.info('Instance %d/%d: Event range: %d...%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
 
-    return (first_record, last_record)
+    return first_record, last_record
     
 
 def read_event_data(first_record, last_record):

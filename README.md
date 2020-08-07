@@ -44,7 +44,11 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
 
-To build and publish the docker image CATD recommended (where TAG\_NAME is set to something like "CR-123_V1"):
+To make sure that your test run is using the correct version of the Locust tests with your version of the 
+event_data you'll need to build and publish a docker image. To make sure that the correct image is deployed it
+is tagged with a string based on the CR number. ie, TAG\_NAME is set to something like "CR-123_V1".
+
+To build and publish the docker image CATD recommended:
 
     $ export PROJECT_ID="census-rh-loadgen"
     $ export TAG_NAME=<TBD>
