@@ -43,6 +43,7 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * PROJECT\_ID - At the time of writing this is 'census-rh-loadgen' for the performance environment.
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
+* LOCUST\_WORKER\_NAME, INSTANCE\_NUM and MAX\_INSTANCES are all set by the generateWorkerManifests.sh script (see below, and in the scripts header for more details)
 
 To make sure that your test run is using the correct version of the Locust tests with your version of the 
 event_data you'll need to build and publish a docker image. To make sure that the correct image is deployed it
@@ -56,12 +57,19 @@ To build and publish the docker image CATD recommended:
     $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
     $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
 
-To deploy:
+To deploy the master:
 
     $ gcp rh loadgen
     $ kubectl apply -f kubernetes_config/master-deployment.yaml
     $ kubectl apply -f kubernetes_config/master-service.yaml
-    $ kubectl apply -f kubernetes_config/worker-deployment.yaml
+    
+To deploy the worker (and get the generateWorkerManifests script to substitute the remaining placeholders) you'll
+need something like:
+
+    $ cp kubernetes_config/worker-deployment.yaml /tmp
+    $ cd <source-dir>/census-int-utility/scripts
+    $ ./generateWorkerManifests.sh /tmp/worker-deployment.yaml /tmp/locustWorkers <num>
+    $ kubectl apply -f /tmp/locustWorkers
 
 To delete Locust deployment:
 
