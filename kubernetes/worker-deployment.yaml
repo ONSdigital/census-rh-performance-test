@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: locust-worker
+  name: [LOCUST_WORKER_NAME]
   labels:
-    name: locust-worker
+    name: [LOCUST_WORKER_NAME]
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: locust-worker
+      app: [LOCUST_WORKER_NAME]
   template:
     metadata:
       labels:
-        app: locust-worker
+        app: [LOCUST_WORKER_NAME]
     spec:
       containers:
-        - name: locust-worker
+        - name: [LOCUST_WORKER_NAME]
           image: gcr.io/[PROJECT_ID]/locust-tasks
           imagePullPolicy: Always
           resources:

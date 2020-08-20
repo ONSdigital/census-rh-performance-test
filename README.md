@@ -43,6 +43,7 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * PROJECT\_ID - At the time of writing this is 'census-rh-loadgen' for the performance environment.
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
+* LOCUST\_WORKER\_NAME, INSTANCE\_NUM and MAX\_INSTANCES are all set by the generateWorkerManifests.sh script (see below, and in the scripts header for more details)
 
 To make sure that your test run is using the correct version of the Locust tests with your version of the 
 event_data you'll need to build and publish a docker image. To make sure that the correct image is deployed it
@@ -56,12 +57,19 @@ To build and publish the docker image CATD recommended:
     $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
     $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
 
-To deploy:
+To deploy the master:
 
     $ gcp rh loadgen
     $ kubectl apply -f kubernetes_config/master-deployment.yaml
     $ kubectl apply -f kubernetes_config/master-service.yaml
-    $ kubectl apply -f kubernetes_config/worker-deployment.yaml
+    
+To deploy the worker (and get the generateWorkerManifests script to substitute the remaining placeholders) you'll
+need something like:
+
+    $ cp kubernetes_config/worker-deployment.yaml /tmp
+    $ cd <source-dir>/census-int-utility/scripts
+    $ ./generateWorkerManifests.sh /tmp/worker-deployment.yaml /tmp/locustWorkers <num>
+    $ kubectl apply -f /tmp/locustWorkers
 
 To delete Locust deployment:
 
@@ -186,7 +194,10 @@ There are a number of environment variable configuration items which can be set:
 * UAC\_ROUTING\_KEY default 'event.uac.update'
 * CASE\_ROUTING\_KEY default 'event.case.update'
 * DATA\_PUBLISH default false, whether to publish test data to Firestore
-* INSTANCE\_NUM no default. Is the instance number for the current run. The Locust test will read
-its own section of the event data file. For example if the event data file has 100 cases and this is 
-instance 3 of 4 then it will only read cases 51 to 75 and sequentially use these during testing.
-* MAX\_INSTANCES no default. This is the number of workers that will be sharing the event data file. 
+* INSTANCE\_NUM no default. Is the instance number for the current run. Numbered from 1 ... MAX\_INSTANCES.
+The Locust test will read its own section of the event data file. For example, if the event data 
+file has 100 cases then instance 3 of 4 will read cases 51 to 75, which will then be sequentially
+used these during testing.
+* MAX\_INSTANCES no default. This is the number of workers that will be sharing the event data file.
+It must have a value which is greater than or equal to 1.
+To get a worker to use the whole file set both INSTANCE\_NUMBER and MAX\_INSTANCES to 1. 
