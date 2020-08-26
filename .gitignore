@@ -9,3 +9,7 @@ test_data/event_data.txt
 ### Python ###
 __pycache__
 .python-version
+
+.classpath
+.settings
+target
