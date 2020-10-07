@@ -174,36 +174,48 @@ class request_new_code(TaskSequence):
         self.client.get("/en/start/")
         
     @seq_task(2)
-    def request_new_access_code(self):
-        self.client.get("/request-access-code")
+    def enter_postcode(self):
+        self.client.post("/en/requests/access-code/enter-address/", {
+            'request-code-enter-address': 'EX2 6GA'
+        })
 
     @seq_task(3)
     def select_address(self):
         # This code should arguable select one of the available addresses but running 
         # with a fixed address doesn't seem to affect the success of the test
-        self.client.post("/request-access-code/select-address", {
+        self.client.post("/en/requests/access-code/select-address", {
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
         })
 
     @seq_task(4)
     def confirm_address(self):
-        self.client.post("/request-access-code/confirm-address", {
+        self.client.post("/en/requests/access-code/confirm-address", {
             'request-address-confirmation': 'yes'
         })
 
     @seq_task(5)
-    def enter_mobile_number(self):
-        self.client.post("/request-access-code/enter-mobile", {
-            'request-mobile-number': '07714 330 933'
+    def select_method(self):
+        self.client.post("/en/requests/access-code/select-method", {
+            'request-code-select-method': 'sms'
         })
 
     @seq_task(6)
-    def confirm_mobile_number(self):
-        self.client.post("/request-access-code/confirm-mobile", {
-            'request-mobile-confirmation': 'yes'
+    def enter_mobile_number(self):
+        self.client.post("/en/requests/access-code/enter-mobile", {
+            'request-mobile-number': '07714 330 933'
         })
 
     @seq_task(7)
+    def confirm_mobile_number(self):
+        self.client.post("/en/requests/access-code/confirm-mobile", {
+            'request-mobile-confirmation': 'yes'
+        })
+
+    @seq_task(8)
+    def code_sent_sms(self):
+        self.client.get("/en/requests/access-code/code-sent-sms")
+
+    @seq_task(9)
     def start_for_new_uac(self):
         self.client.get("/en/start/")
 
@@ -232,7 +244,6 @@ class launch_web_chat(TaskSequence):
             'country': 'England',
             'query': 'technical'
         }, allow_redirects=False)
-
 
 class UserBehavior(TaskSet):
     """
