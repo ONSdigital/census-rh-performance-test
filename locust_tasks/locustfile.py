@@ -166,7 +166,7 @@ This task sequence simulates a user following the 'request a new code' sequence 
 The simulated user steps through the pages one by one. They don't go down any of the 
 correction/error paths as this doesn't trigger any significant server side work.
 """
-class request_new_code(TaskSequence):
+class request_new_code_sms(TaskSequence):
 
     # All users arrive at the start page
     @seq_task(1)
@@ -181,7 +181,7 @@ class request_new_code(TaskSequence):
 
     @seq_task(3)
     def select_address(self):
-        # This code should arguable select one of the available addresses but running 
+        # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
         self.client.post("/en/requests/access-code/select-address", {
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
@@ -215,11 +215,56 @@ class request_new_code(TaskSequence):
     def code_sent_sms(self):
         self.client.get("/en/requests/access-code/code-sent-sms")
 
-    @seq_task(9)
-    def start_for_new_uac(self):
+class request_new_code_post(TaskSequence):
+
+    # All users arrive at the start page
+    @seq_task(1)
+    def start_page(self):
         self.client.get("/en/start/")
 
- 
+    @seq_task(2)
+    def enter_postcode(self):
+        self.client.post("/en/requests/access-code/enter-address/", {
+            'request-code-enter-address': 'EX2 6GA'
+        })
+
+    @seq_task(3)
+    def select_address(self):
+        # This code should arguably select one of the available addresses but running
+        # with a fixed address doesn't seem to affect the success of the test
+        self.client.post("/en/requests/access-code/select-address", {
+            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
+        })
+
+    @seq_task(4)
+    def confirm_address(self):
+        self.client.post("/en/requests/access-code/confirm-address", {
+            'request-address-confirmation': 'yes'
+        })
+
+    @seq_task(5)
+    def select_method(self):
+        self.client.post("/en/requests/access-code/select-method", {
+            'request-code-select-method': 'post'
+        })
+
+    @seq_task(6)
+    def enter_name(self):
+        self.client.post("/en/requests/access-code/enter-name", {
+            'first-name': 'John',
+            'last-name' : 'Smith'
+        })
+
+    @seq_task(7)
+    def confirm_name_address(self):
+        self.client.post("/en/requests/access-code/confirm-name-address", {
+            'request-name-address-confirmation': 'yes'
+        })
+
+    @seq_task(8)
+    def code_sent_post(self):
+        self.client.get("/en/requests/access-code/code-sent-post")
+
 class launch_web_chat(TaskSequence):
     """
     This task sequence simulates a user launching web chat.
@@ -252,13 +297,13 @@ class UserBehavior(TaskSet):
     """
     
     tasks = {
-        LaunchEQ: 100,
+        LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code: 0,
+        request_new_code_sms: 50,
+        request_new_code_post: 50,
         launch_web_chat: 0
     }
-
 
 class WebsiteUser(HttpLocust):
     task_set = UserBehavior
