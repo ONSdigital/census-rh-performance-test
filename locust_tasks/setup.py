@@ -1,4 +1,4 @@
-import pika
+#import pika
 import csv
 import datetime
 import hashlib
