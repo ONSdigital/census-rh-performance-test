@@ -4,7 +4,7 @@ import re
 import logging
 import time
 from enum import Enum
-from locust import HttpUser, TaskSet, between, SequentialTaskSet, task
+from locust import HttpUser, TaskSet, between, SequentialTaskSet, task, events
 
 sys.path.append(os.getcwd())
 from locust_tasks.setup import setup, get_next_case
@@ -65,7 +65,7 @@ class LaunchEQ(SequentialTaskSet):
     """
     Class to represent a user entering a UAC and launching EQ.
     """
-    self.case = get_next_case()
+
 
     # assume all users arrive at the start page
     @task
@@ -73,6 +73,7 @@ class LaunchEQ(SequentialTaskSet):
         """
         GET Start page
         """
+        self.case = get_next_case()
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
@@ -309,8 +310,8 @@ class WebsiteUser(HttpUser):
     tasks = [LaunchEQ]
     wait_time = between(2, 10)
 
-    def setup(self):
-        setup()
+    # def setup(self):
+    #     setup()
 
 
 """
@@ -427,3 +428,12 @@ Removes blank lines from supplied text
 """
 def clean_text(text):
     return re.sub(r'\n\s*\n', '\n', text, flags=re.MULTILINE)
+
+@events.test_start.add_listener
+def on_test_start(**kw):
+    print("test is starting")
+    setup()
+
+@events.test_stop.add_listener
+def on_test_stop(**kw):
+    print("test is stopping")
