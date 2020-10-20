@@ -290,29 +290,16 @@ class launch_web_chat(SequentialTaskSet):
             'query': 'technical'
         }, allow_redirects=False)
 
-# class UserBehavior(TaskSet):
-#     """
-#     This class controls the balance of the tasks which simulated users are performing.
-#     TODO: Adjust to a more representative balance. (Currently set for development)
-#     """
-
-    # tasks = {
-    #     LaunchEQ: 100,
-    #     LaunchEQInvalidUAC: 0,
-    #     LaunchEQwithAddressCorrection: 0,
-    #     request_new_code_sms: 0,
-    #     request_new_code_post: 0,
-    #     launch_web_chat: 0
-    # }
-
 class WebsiteUser(HttpUser):
-    #task_set = UserBehavior
-    tasks = [LaunchEQ]
+    tasks = {
+        LaunchEQ: 100,
+        LaunchEQInvalidUAC: 0,
+        LaunchEQwithAddressCorrection: 0,
+        request_new_code_sms: 0,
+        request_new_code_post: 0,
+        launch_web_chat: 0
+    }
     wait_time = between(2, 10)
-
-    # def setup(self):
-    #     setup()
-
 
 """
 This function should be called after each page transition as it aims to aggressively check that:
