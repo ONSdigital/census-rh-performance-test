@@ -24,8 +24,8 @@ If the extract start/end is not specified then the whole page will be added to t
 """ 
 class Page(Enum):
     START           = ('<title>Start census - Census 2021</title>',
-                       'Start Census</h1>',
-                       'Enter the 16 character code'
+                       'Start census</h1>',
+                       'Enter your 16-character access code'
     				  )
     ADDRESS_CORRECT = ('<title>Is this the correct address? - Census 2021</title>',
                        '<h1 class="question__title">',
@@ -171,49 +171,51 @@ class request_new_code_sms(SequentialTaskSet):
     # All users arrive at the start page
     @task(1)
     def start_page(self):
-        self.client.get("/en/start/")
+        self.case = get_next_case()
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('Launch-Start', self, response, 200, Page.START)
         
-    @task(2)
-    def enter_postcode(self):
-        self.client.post("/en/requests/access-code/enter-address/", {
-            'request-code-enter-address': 'EX2 6GA'
-        })
+    # @task(2)
+    # def enter_postcode(self):
+    #     self.client.post("/en/requests/access-code/enter-address/", {
+    #         'request-code-enter-address': 'EX2 6GA'
+    #     })
 
-    @task(3)
-    def select_address(self):
-        # This code should arguably select one of the available addresses but running
-        # with a fixed address doesn't seem to affect the success of the test
-        self.client.post("/en/requests/access-code/select-address", {
-            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-        })
-
-    @task(4)
-    def confirm_address(self):
-        self.client.post("/en/requests/access-code/confirm-address", {
-            'request-address-confirmation': 'yes'
-        })
-
-    @task(5)
-    def select_method(self):
-        self.client.post("/en/requests/access-code/select-method", {
-            'request-code-select-method': 'sms'
-        })
-
-    @task(6)
-    def enter_mobile_number(self):
-        self.client.post("/en/requests/access-code/enter-mobile", {
-            'request-mobile-number': '07714 330 933'
-        })
-
-    @task(7)
-    def confirm_mobile_number(self):
-        self.client.post("/en/requests/access-code/confirm-mobile", {
-            'request-mobile-confirmation': 'yes'
-        })
-
-    @task(8)
-    def code_sent_sms(self):
-        self.client.get("/en/requests/access-code/code-sent-sms")
+    # @task(3)
+    # def select_address(self):
+    #     # This code should arguably select one of the available addresses but running
+    #     # with a fixed address doesn't seem to affect the success of the test
+    #     self.client.post("/en/requests/access-code/select-address", {
+    #         'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
+    #     })
+    #
+    # @task(4)
+    # def confirm_address(self):
+    #     self.client.post("/en/requests/access-code/confirm-address", {
+    #         'request-address-confirmation': 'yes'
+    #     })
+    #
+    # @task(5)
+    # def select_method(self):
+    #     self.client.post("/en/requests/access-code/select-method", {
+    #         'request-code-select-method': 'sms'
+    #     })
+    #
+    # @task(6)
+    # def enter_mobile_number(self):
+    #     self.client.post("/en/requests/access-code/enter-mobile", {
+    #         'request-mobile-number': '07714 330 933'
+    #     })
+    #
+    # @task(7)
+    # def confirm_mobile_number(self):
+    #     self.client.post("/en/requests/access-code/confirm-mobile", {
+    #         'request-mobile-confirmation': 'yes'
+    #     })
+    #
+    # @task(8)
+    # def code_sent_sms(self):
+    #     self.client.get("/en/requests/access-code/code-sent-sms")
 
 class request_new_code_post(SequentialTaskSet):
 
@@ -292,10 +294,10 @@ class launch_web_chat(SequentialTaskSet):
 
 class WebsiteUser(HttpUser):
     tasks = {
-        LaunchEQ: 100,
+        LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code_sms: 0,
+        request_new_code_sms: 100,
         request_new_code_post: 0,
         launch_web_chat: 0
     }
@@ -325,15 +327,14 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
 
     # Page check
     current_page = identify_page(id, task, resp)
+    page_extract = extract_key_page_content(id, task, resp, current_page)
     if current_page != expected_page:
         failure_message = f'On wrong page. Expected to be on {expected_page.name} page but am on {current_page.name} page.'
-        page_extract = extract_key_page_content(id, task, resp, current_page)
-        report_failure(id, resp, task, failure_message, page_extract)        
+        report_failure(id, resp, task, failure_message, page_extract)
     
     # Status check
     if expected_status != resp.status_code:
         failure_message = f'Status mismatch. Expected {expected_status} but was {resp.status_code}.'
-        page_extract = extract_key_page_content(id, task, resp, current_page)
         report_failure(id, resp, task, failure_message, page_extract)        
     
     # Content verification
@@ -344,7 +345,6 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
         # Check page content
         if expected_content not in resp.text:
             failure_message = f'{current_page.name} page does not contain expected text ({expected_content}).'
-            page_extract = extract_key_page_content(id, task, resp, current_page)
             report_failure(id, resp, task, failure_message, page_extract)
     
     resp.success()
