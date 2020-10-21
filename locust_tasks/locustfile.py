@@ -170,32 +170,37 @@ The simulated user steps through the pages one by one. They don't go down any of
 correction/error paths as this doesn't trigger any significant server side work.
 """
 class request_new_code_sms(SequentialTaskSet):
+    """
+    Class to represent a user requesting a new UAC, which is to be sent by SMS.
+    """
 
     # All users arrive at the start page
     @task(1)
     def start_page(self):
+        """
+        GET Start page
+        """
         self.case = get_next_case()
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-Start', self, response, 200, Page.START)
         
     @task(2)
     def enter_postcode(self):
+        """
+        POST postcode
+        """
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS, self.case["postcode"])
-        # self.client.post("/en/requests/access-code/enter-address/", {
-        #     'request-code-enter-address': self.case['postcode']
-        # }, catch_response=True) as response:
-        #     verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
-    # @task(3)
-    # def select_address(self):
-    #     # This code should arguably select one of the available addresses but running
-    #     # with a fixed address doesn't seem to affect the success of the test
-    #     self.client.post("/en/requests/access-code/select-address", {
-    #         'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-    #     })
+    @task(3)
+    def select_address(self):
+        # This code should arguably select one of the available addresses but running
+        # with a fixed address doesn't seem to affect the success of the test
+        self.client.post("/en/requests/access-code/select-address/", {
+            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
+        })
     #
     # @task(4)
     # def confirm_address(self):
