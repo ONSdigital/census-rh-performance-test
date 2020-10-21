@@ -50,6 +50,12 @@ class Page(Enum):
     SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
                        'addresses found for postcode',
                        'I cannot find my address')
+    CONFIRM_ADDRESS   = ('<h1 class="question__title">Is this the correct address?</h1>',
+                        'Yes',
+                        'No')
+    SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+                         'Select how to send access code',
+                         'To request a census in a different format or for further help')
 
   
     def __init__(self, title, extract_start, extract_end):
@@ -197,18 +203,20 @@ class request_new_code_sms(SequentialTaskSet):
     def select_address(self):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
-        self.client.post("/en/requests/access-code/select-address/", {
+        with self.client.post("/en/requests/access-code/select-address/", {
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-        })
+        }) as response:
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.CONFIRM_ADDRESS, "this is the correct address")
 
     @task(4)
     def confirm_address(self):
         """
         POST 'yes' to confirm address
         """
-        self.client.post("/en/requests/access-code/confirm-address/", {
+        with self.client.post("/en/requests/access-code/confirm-address/", {
             'request-address-confirmation': 'yes'
-        })
+        }) as response:
+            verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
 
     @task(5)
     def select_method(self):
