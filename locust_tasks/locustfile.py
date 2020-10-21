@@ -47,6 +47,9 @@ class Page(Enum):
                        '',
                        ''
                       )
+    SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
+                       'addresses found for postcode',
+                       'I cannot find my address')
 
   
     def __init__(self, title, extract_start, extract_end):
@@ -173,13 +176,18 @@ class request_new_code_sms(SequentialTaskSet):
     def start_page(self):
         self.case = get_next_case()
         with self.client.get('/en/start/', catch_response=True) as response:
-            verify_response('Launch-Start', self, response, 200, Page.START)
+            verify_response('RequestUacSms-Start', self, response, 200, Page.START)
         
-    # @task(2)
-    # def enter_postcode(self):
-    #     self.client.post("/en/requests/access-code/enter-address/", {
-    #         'request-code-enter-address': 'EX2 6GA'
-    #     })
+    @task(2)
+    def enter_postcode(self):
+        with self.client.post("/en/requests/access-code/enter-address/", {
+            'form-enter-address-postcode': self.case['postcode']
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS, self.case["postcode"])
+        # self.client.post("/en/requests/access-code/enter-address/", {
+        #     'request-code-enter-address': self.case['postcode']
+        # }, catch_response=True) as response:
+        #     verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
     # @task(3)
     # def select_address(self):
