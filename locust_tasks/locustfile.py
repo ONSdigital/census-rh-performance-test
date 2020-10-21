@@ -174,7 +174,6 @@ class request_new_code_sms(SequentialTaskSet):
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
 
-    # All users arrive at the start page
     @task(1)
     def start_page(self):
         """
@@ -201,33 +200,48 @@ class request_new_code_sms(SequentialTaskSet):
         self.client.post("/en/requests/access-code/select-address/", {
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
         })
-    #
-    # @task(4)
-    # def confirm_address(self):
-    #     self.client.post("/en/requests/access-code/confirm-address", {
-    #         'request-address-confirmation': 'yes'
-    #     })
-    #
-    # @task(5)
-    # def select_method(self):
-    #     self.client.post("/en/requests/access-code/select-method", {
-    #         'request-code-select-method': 'sms'
-    #     })
-    #
-    # @task(6)
-    # def enter_mobile_number(self):
-    #     self.client.post("/en/requests/access-code/enter-mobile", {
-    #         'request-mobile-number': '07714 330 933'
-    #     })
-    #
+
+    @task(4)
+    def confirm_address(self):
+        """
+        POST 'yes' to confirm address
+        """
+        self.client.post("/en/requests/access-code/confirm-address/", {
+            'request-address-confirmation': 'yes'
+        })
+
+    @task(5)
+    def select_method(self):
+        """
+        POST 'sms' to select text message as method of sending UACs
+        """
+        self.client.post("/en/requests/access-code/select-method/", {
+            'request-code-select-method': 'sms'
+        })
+
+    @task(6)
+    def enter_mobile_number(self):
+        """
+        POST a mobile number
+        """
+        self.client.post("/en/requests/access-code/enter-mobile/", {
+            'request-mobile-number': '07714 330 933'
+        })
+
     # @task(7)
     # def confirm_mobile_number(self):
-    #     self.client.post("/en/requests/access-code/confirm-mobile", {
+    #     """
+    #     POST 'yes' to confirm mobile number
+    #     """
+    #     self.client.post("/en/requests/access-code/confirm-mobile/", {
     #         'request-mobile-confirmation': 'yes'
     #     })
-    #
+
     # @task(8)
     # def code_sent_sms(self):
+    #     """
+    #     GET page confirming UAC has been sent via SMS
+    #     """
     #     self.client.get("/en/requests/access-code/code-sent-sms")
 
 class request_new_code_post(SequentialTaskSet):
