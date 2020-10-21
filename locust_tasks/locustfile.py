@@ -56,6 +56,9 @@ class Page(Enum):
     SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
                          'Select how to send access code',
                          'To request a census in a different format or for further help')
+    ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
+                         'UK mobile phone number',
+                         'to send the access code')
 
   
     def __init__(self, title, extract_start, extract_end):
@@ -223,9 +226,10 @@ class request_new_code_sms(SequentialTaskSet):
         """
         POST 'sms' to select text message as method of sending UACs
         """
-        self.client.post("/en/requests/access-code/select-method/", {
+        with self.client.post("/en/requests/access-code/select-method/", {
             'request-code-select-method': 'sms'
-        })
+        }) as response:
+            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "This will not be stored")
 
     @task(6)
     def enter_mobile_number(self):
