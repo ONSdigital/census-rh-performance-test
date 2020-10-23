@@ -48,17 +48,30 @@ class Page(Enum):
                        ''
                       )
     SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
-                       'addresses found for postcode',
-                       'I cannot find my address')
+                        'addresses found for postcode',
+                        'I cannot find my address')
     CONFIRM_ADDRESS   = ('<h1 class="question__title">Is this the correct address?</h1>',
-                        'Yes',
-                        'No')
+                         '',
+                         '')
     SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
-                         'Select how to send access code',
-                         'To request a census in a different format or for further help')
+                         '',
+                         '')
     ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
-                         'UK mobile phone number',
-                         'to send the access code')
+                        '',
+                        '')
+
+    # SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
+    #                    'addresses found for postcode',
+    #                    'I cannot find my address')
+    # CONFIRM_ADDRESS   = ('<h1 class="question__title">Is this the correct address?</h1>',
+    #                     'Yes',
+    #                     'No')
+    # SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+    #                      'Select how to send access code',
+    #                      'To request a census in a different format or for further help')
+    # ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
+    #                      'UK mobile phone number',
+    #                      'to send the access code')
 
   
     def __init__(self, title, extract_start, extract_end):
