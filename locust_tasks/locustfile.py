@@ -50,9 +50,9 @@ class Page(Enum):
     SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
                         'addresses found for postcode',
                         'I cannot find my address')
-    SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
-                         '',
-                         '')
+    SELECT_METHOD     = ('<title>How would you like to receive a new access code? - Census 2021</title>',
+                         '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+                         'To request a census in a different format or for further help, please')
     ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
                         '',
                         '')
@@ -215,18 +215,18 @@ class request_new_code_sms(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "this is the correct address")
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "37 Sinah Lane")
 
-    # @task(4)
-    # def confirm_address(self):
-    #     """
-    #     POST 'yes' to confirm address
-    #     """
-    #     with self.client.post("/en/requests/access-code/confirm-address/", {
-    #         'request-address-confirmation': 'yes'
-    #     }, catch_response=True) as response:
-    #         verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "")
-    #
+    @task(4)
+    def confirm_address(self):
+        """
+        POST 'yes' to confirm address
+        """
+        with self.client.post("/en/requests/access-code/confirm-address/", {
+            'form-confirm-address': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
+
     # @task(5)
     # def select_method(self):
     #     """
