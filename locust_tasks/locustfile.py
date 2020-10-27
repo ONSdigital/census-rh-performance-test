@@ -56,14 +56,11 @@ class Page(Enum):
     ENTER_MOBILE     = ('<title>What is your mobile phone number? - Census 2021</title>',
                         '<h1 class="question__title">What is your mobile phone number?</h1>',
                         'Continue')
-    CONFIRM_MOBILE   = ('<h1 class="question__title">Is this mobile phone number correct?</h1>',
-                        '',
-                        '')
-    # ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
-    #                      'UK mobile phone number',
-    #                      'to send the access code')
+    CONFIRM_MOBILE   = ('<title>Is this mobile phone number correct? - Census 2021</title>',
+                        '<h1 class="question__title">Is this mobile phone number correct?</h1>',
+                        'Continue')
 
-  
+
     def __init__(self, title, extract_start, extract_end):
         self.title = title
         self.extract_start = extract_start
@@ -233,16 +230,16 @@ class request_new_code_sms(SequentialTaskSet):
             'form-select-method': 'sms'
         }, catch_response=True) as response:
             verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "")
-    #
-    # @task(6)
-    # def enter_mobile_number(self):
-    #     """
-    #     POST a mobile number
-    #     """
-    #     with self.client.post("/en/requests/access-code/enter-mobile/", {
-    #         'request-mobile-number': '07714 330 933'
-    #     }, catch_response=True) as response:
-    #         verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE , "This will not be stored")
+
+    @task(6)
+    def enter_mobile_number(self):
+        """
+        POST a mobile number
+        """
+        with self.client.post("/en/requests/access-code/enter-mobile/", {
+            'request-mobile-number': '07714 330 933'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE , "0933")
 
     # @task(7)
     # def confirm_mobile_number(self):
