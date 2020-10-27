@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-locustio = "==0.13.2"
+locust = "==1.2.3"
 pika = "*"
 
 [dev-packages]

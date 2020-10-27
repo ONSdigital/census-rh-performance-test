@@ -50,22 +50,15 @@ class Page(Enum):
     SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
                         'addresses found for postcode',
                         'I cannot find my address')
-    CONFIRM_ADDRESS   = ('<h1 class="question__title">Is this the correct address?</h1>',
-                         '',
-                         '')
     SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
                          '',
                          '')
     ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
                         '',
                         '')
-
-    # SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
-    #                    'addresses found for postcode',
-    #                    'I cannot find my address')
-    # CONFIRM_ADDRESS   = ('<h1 class="question__title">Is this the correct address?</h1>',
-    #                     'Yes',
-    #                     'No')
+    CONFIRM_MOBILE   = ('<h1 class="question__title">Is this mobile phone number correct?</h1>',
+                        '',
+                        '')
     # SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
     #                      'Select how to send access code',
     #                      'To request a census in a different format or for further help')
@@ -220,38 +213,39 @@ class request_new_code_sms(SequentialTaskSet):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
         with self.client.post("/en/requests/access-code/select-address/", {
-            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-        }) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.CONFIRM_ADDRESS, "this is the correct address")
+            'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "this is the correct address")
 
-    @task(4)
-    def confirm_address(self):
-        """
-        POST 'yes' to confirm address
-        """
-        with self.client.post("/en/requests/access-code/confirm-address/", {
-            'request-address-confirmation': 'yes'
-        }) as response:
-            verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
-
-    @task(5)
-    def select_method(self):
-        """
-        POST 'sms' to select text message as method of sending UACs
-        """
-        with self.client.post("/en/requests/access-code/select-method/", {
-            'request-code-select-method': 'sms'
-        }) as response:
-            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "This will not be stored")
-
-    @task(6)
-    def enter_mobile_number(self):
-        """
-        POST a mobile number
-        """
-        self.client.post("/en/requests/access-code/enter-mobile/", {
-            'request-mobile-number': '07714 330 933'
-        })
+    # @task(4)
+    # def confirm_address(self):
+    #     """
+    #     POST 'yes' to confirm address
+    #     """
+    #     with self.client.post("/en/requests/access-code/confirm-address/", {
+    #         'request-address-confirmation': 'yes'
+    #     }, catch_response=True) as response:
+    #         verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "")
+    #
+    # @task(5)
+    # def select_method(self):
+    #     """
+    #     POST 'sms' to select text message as method of sending UACs
+    #     """
+    #     with self.client.post("/en/requests/access-code/select-method/", {
+    #         'request-code-select-method': 'sms'
+    #     }, catch_response=True) as response:
+    #         verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "")
+    #
+    # @task(6)
+    # def enter_mobile_number(self):
+    #     """
+    #     POST a mobile number
+    #     """
+    #     with self.client.post("/en/requests/access-code/enter-mobile/", {
+    #         'request-mobile-number': '07714 330 933'
+    #     }, catch_response=True) as response:
+    #         verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE , "This will not be stored")
 
     # @task(7)
     # def confirm_mobile_number(self):
