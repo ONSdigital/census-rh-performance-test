@@ -47,21 +47,18 @@ class Page(Enum):
                        '',
                        ''
                       )
-    SELECT_ADDRESS   = ('<h1 class="question__title">Select your address</h1>',
-                        'addresses found for postcode',
+    SELECT_ADDRESS   = ('<title>Select your address - Census 2021</title>',
+                        '<h1 class="question__title">Select your address</h1>',
                         'I cannot find my address')
     SELECT_METHOD     = ('<title>How would you like to receive a new access code? - Census 2021</title>',
                          '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
                          'To request a census in a different format or for further help, please')
-    ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
-                        '',
-                        '')
+    ENTER_MOBILE     = ('<title>What is your mobile phone number? - Census 2021</title>',
+                        '<h1 class="question__title">What is your mobile phone number?</h1>',
+                        'Continue')
     CONFIRM_MOBILE   = ('<h1 class="question__title">Is this mobile phone number correct?</h1>',
                         '',
                         '')
-    # SELECT_METHOD     = ('<h1 class="question__title">How would you like to receive a new household access code?</h1>',
-    #                      'Select how to send access code',
-    #                      'To request a census in a different format or for further help')
     # ENTER_MOBILE     = ('<h1 class="question__title">What is your mobile phone number?</h1>',
     #                      'UK mobile phone number',
     #                      'to send the access code')
@@ -227,15 +224,15 @@ class request_new_code_sms(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
 
-    # @task(5)
-    # def select_method(self):
-    #     """
-    #     POST 'sms' to select text message as method of sending UACs
-    #     """
-    #     with self.client.post("/en/requests/access-code/select-method/", {
-    #         'request-code-select-method': 'sms'
-    #     }, catch_response=True) as response:
-    #         verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "")
+    @task(5)
+    def select_method(self):
+        """
+        POST 'sms' to select text message as method of sending UACs
+        """
+        with self.client.post("/en/requests/access-code/select-method/", {
+            'form-select-method': 'sms'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "")
     #
     # @task(6)
     # def enter_mobile_number(self):
