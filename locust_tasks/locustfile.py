@@ -62,6 +62,9 @@ class Page(Enum):
     CODE_SENT_SMS   = ('<title>We have sent an access code - Census 2021</title>',
                         'We have sent a text to',
                         'Ready to start your census online?')
+    ENTER_NAME   = ('<title>What is your name? - Census 2021</title>',
+                    '<h1 class="question__title">What is your name?</h1>',
+                        'Continue')
 
 
     def __init__(self, title, extract_start, extract_end):
@@ -254,45 +257,65 @@ class request_new_code_sms(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT_SMS , "0933")
 
-    # @task(8)
-    # def code_sent_sms(self):
-    #     """
-    #     GET page confirming UAC has been sent via SMS
-    #     """
-    #     self.client.get("/en/requests/access-code/code-sent-sms")
+    @task(8)
+    def code_sent_sms(self):
+        """
+        GET page confirming UAC has been sent via SMS
+        """
+        with self.client.get('/en/requests/access-code/code-sent-sms/', catch_response=True) as response:
+            verify_response('RequestUacSms-CodeSentSms', self, response, 200, Page.CODE_SENT_SMS)
+
 
 class request_new_code_post(SequentialTaskSet):
 
     # All users arrive at the start page
     @task(1)
     def start_page(self):
-        self.client.get("/en/start/")
+        """
+        GET Start page
+        """
+        self.case = get_next_case()
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('RequestUacPost-Start', self, response, 200, Page.START)
 
     @task(2)
     def enter_postcode(self):
-        self.client.post("/en/requests/access-code/enter-address/", {
-            'request-code-enter-address': 'EX2 6GA'
-        })
+        """
+        POST postcode
+        """
+        with self.client.post("/en/requests/access-code/enter-address/", {
+            'form-enter-address-postcode': self.case['postcode']
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS, self.case["postcode"])
 
     @task(3)
     def select_address(self):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
-        self.client.post("/en/requests/access-code/select-address", {
-            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-        })
+        with self.client.post("/en/requests/access-code/select-address/", {
+            'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "37 Sinah Lane")
 
     @task(4)
     def confirm_address(self):
-        self.client.post("/en/requests/access-code/confirm-address", {
-            'request-address-confirmation': 'yes'
-        })
+        """
+        POST 'yes' to confirm address
+        """
+        with self.client.post("/en/requests/access-code/confirm-address/", {
+            'form-confirm-address': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
 
     @task(5)
     def select_method(self):
-        self.client.post("/en/requests/access-code/select-method", {
-            'request-code-select-method': 'post'
-        })
+        """
+        POST 'sms' to select text message as method of sending UACs
+        """
+        with self.client.post("/en/requests/access-code/select-method/", {
+            'form-select-method': 'post'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME, "")
 
     @task(6)
     def enter_name(self):
