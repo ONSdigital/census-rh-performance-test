@@ -59,6 +59,9 @@ class Page(Enum):
     CONFIRM_MOBILE   = ('<title>Is this mobile phone number correct? - Census 2021</title>',
                         '<h1 class="question__title">Is this mobile phone number correct?</h1>',
                         'Continue')
+    CODE_SENT_SMS   = ('<title>We have sent an access code - Census 2021</title>',
+                        'We have sent a text to',
+                        'Ready to start your census online?')
 
 
     def __init__(self, title, extract_start, extract_end):
@@ -241,14 +244,15 @@ class request_new_code_sms(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE , "0933")
 
-    # @task(7)
-    # def confirm_mobile_number(self):
-    #     """
-    #     POST 'yes' to confirm mobile number
-    #     """
-    #     self.client.post("/en/requests/access-code/confirm-mobile/", {
-    #         'request-mobile-confirmation': 'yes'
-    #     })
+    @task(7)
+    def confirm_mobile_number(self):
+        """
+        POST 'yes' to confirm mobile number
+        """
+        with self.client.post("/en/requests/access-code/confirm-mobile/", {
+            'request-mobile-confirmation': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT_SMS , "0933")
 
     # @task(8)
     # def code_sent_sms(self):
