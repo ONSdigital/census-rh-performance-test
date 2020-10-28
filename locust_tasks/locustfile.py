@@ -65,6 +65,9 @@ class Page(Enum):
     ENTER_NAME   = ('<title>What is your name? - Census 2021</title>',
                     '<h1 class="question__title">What is your name?</h1>',
                         'Continue')
+    CONFIRM_NAME   = ('<title>Do you want to send a new access code to this address? - Census 2021</title>',
+                      '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
+                    'Continue')
 
 
     def __init__(self, title, extract_start, extract_end):
@@ -305,12 +308,12 @@ class request_new_code_post(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-address/", {
             'form-confirm-address': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
+            verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Post")
 
     @task(5)
     def select_method(self):
         """
-        POST 'sms' to select text message as method of sending UACs
+        POST 'post' to select post as method of sending UACs
         """
         with self.client.post("/en/requests/access-code/select-method/", {
             'form-select-method': 'post'
@@ -319,20 +322,24 @@ class request_new_code_post(SequentialTaskSet):
 
     @task(6)
     def enter_name(self):
-        self.client.post("/en/requests/access-code/enter-name", {
-            'first-name': 'John',
-            'last-name' : 'Smith'
-        })
+        """
+        POST 'John' as first name and 'Smith' as last name of person to send the UAC to
+        """
+        with self.client.post("/en/requests/access-code/enter-name/", {
+            'name_first_name': 'John',
+            'name_last_name' : 'Smith'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME, "<strong>John Smith</strong>")
 
-    @task(7)
-    def confirm_name_address(self):
-        self.client.post("/en/requests/access-code/confirm-name-address", {
-            'request-name-address-confirmation': 'yes'
-        })
-
-    @task(8)
-    def code_sent_post(self):
-        self.client.get("/en/requests/access-code/code-sent-post")
+    # @task(7)
+    # def confirm_name_address(self):
+    #     self.client.post("/en/requests/access-code/confirm-name-address", {
+    #         'request-name-address-confirmation': 'yes'
+    #     })
+    #
+    # @task(8)
+    # def code_sent_post(self):
+    #     self.client.get("/en/requests/access-code/code-sent-post")
 
 class launch_web_chat(SequentialTaskSet):
     """
@@ -364,8 +371,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code_sms: 100,
-        request_new_code_post: 0,
+        request_new_code_sms: 0,
+        request_new_code_post: 100,
         launch_web_chat: 0
     }
     wait_time = between(2, 10)
