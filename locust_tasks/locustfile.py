@@ -358,9 +358,13 @@ class request_new_code_post(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, "John Smith")
 
-    # @task(8)
-    # def code_sent_post(self):
-    #     self.client.get("/en/requests/access-code/code-sent-post")
+    @task(8)
+    def code_sent_post(self):
+        """
+        GET page confirming UAC has been sent via post
+        """
+        with self.client.get('/en/requests/access-code/code-sent-post/', catch_response=True) as response:
+            verify_response('RequestUacPost-CodeSentPost', self, response, 200, Page.CODE_SENT, "John Smith")
 
 
 class launch_web_chat(SequentialTaskSet):
