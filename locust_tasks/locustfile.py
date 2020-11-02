@@ -253,7 +253,7 @@ class request_new_code_sms(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-method/", {
             'form-select-method': 'sms'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE, "")
+            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE)
 
     @task(6)
     def enter_mobile_number(self):
@@ -398,8 +398,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code_sms: 0,
-        request_new_code_post: 100,
+        request_new_code_sms: 50,
+        request_new_code_post: 50,
         launch_web_chat: 0
     }
     wait_time = between(2, 10)
