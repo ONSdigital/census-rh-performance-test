@@ -11,7 +11,6 @@ from locust_tasks.setup import setup, get_next_case
 
 logger = logging.getLogger('performance')
 
-
 """
 This enum defines the applications pages.
 
@@ -21,72 +20,78 @@ particular page.
 If the page specifies some text extract_start/end then the text within this range will be
 used in the error message to help debug what has gone wrong. 
 If the extract start/end is not specified then the whole page will be added to the error message.
-""" 
+"""
+
+
 class Page(Enum):
-    START           = ('<title>Start census - Census 2021</title>',
-                       'Start census</h1>',
-                       'Enter your 16-character access code'
-    				  )
+    START = ('<title>Start census - Census 2021</title>',
+             'Start census</h1>',
+             'Enter your 16-character access code'
+             )
     ADDRESS_CORRECT = ('<title>Is this the correct address? - Census 2021</title>',
                        '<h1 class="question__title">',
                        '<fieldset'
-                      )
-    EQ_LAUNCHED     = ('302: Found',
-                       '',
-                       ''
-                      )
-    ERROR           = ('<title>Error - Census 2021</title>',
-                       'id="main-content"',
-                       '<footer'
-                      )
-    ERROR_502       = ('<title>502 Server Error</title>',
-                       '',
-                       ''
-                      )
-    ERROR_GENERIC   = ('<h1>Error: Server Error</h1>',
-                       '',
-                       ''
-                      )
-    SELECT_ADDRESS   = ('<title>Select your address - Census 2021</title>',
-                        '<h1 class="question__title">Select your address</h1>',
-                        'I cannot find my address')
-    SELECT_METHOD     = ('<title>How would you like to receive a new access code? - Census 2021</title>',
-                         '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
-                         'To request a census in a different format or for further help, please')
-    ENTER_MOBILE     = ('<title>What is your mobile phone number? - Census 2021</title>',
-                        '<h1 class="question__title">What is your mobile phone number?</h1>',
-                        'Continue')
-    CONFIRM_MOBILE   = ('<title>Is this mobile phone number correct? - Census 2021</title>',
-                        '<h1 class="question__title">Is this mobile phone number correct?</h1>',
-                        'Continue')
-    CODE_SENT_SMS   = ('<title>We have sent an access code - Census 2021</title>',
-                        'We have sent a text to',
-                        'Ready to start your census online?')
-    ENTER_NAME   = ('<title>What is your name? - Census 2021</title>',
-                    '<h1 class="question__title">What is your name?</h1>',
-                        'Continue')
-    CONFIRM_NAME   = ('<title>Do you want to send a new access code to this address? - Census 2021</title>',
-                      '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
+                       )
+    EQ_LAUNCHED = ('302: Found',
+                   '',
+                   ''
+                   )
+    ERROR = ('<title>Error - Census 2021</title>',
+             'id="main-content"',
+             '<footer'
+             )
+    ERROR_502 = ('<title>502 Server Error</title>',
+                 '',
+                 ''
+                 )
+    ERROR_GENERIC = ('<h1>Error: Server Error</h1>',
+                     '',
+                     ''
+                     )
+    SELECT_ADDRESS = ('<title>Select your address - Census 2021</title>',
+                      '<h1 class="question__title">Select your address</h1>',
+                      'I cannot find my address')
+    SELECT_METHOD = ('<title>How would you like to receive a new access code? - Census 2021</title>',
+                     '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+                     'To request a census in a different format or for further help, please')
+    ENTER_MOBILE = ('<title>What is your mobile phone number? - Census 2021</title>',
+                    '<h1 class="question__title">What is your mobile phone number?</h1>',
                     'Continue')
+    CONFIRM_MOBILE = ('<title>Is this mobile phone number correct? - Census 2021</title>',
+                      '<h1 class="question__title">Is this mobile phone number correct?</h1>',
+                      'Continue')
+    ENTER_NAME = ('<title>What is your name? - Census 2021</title>',
+                  '<h1 class="question__title">What is your name?</h1>',
+                  'Continue')
+    CONFIRM_NAME = ('<title>Do you want to send a new access code to this address? - Census 2021</title>',
+                    '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
+                    'Continue')
+    CODE_SENT = ('<title>We have sent an access code - Census 2021</title>',
+                 '',
+                 '')
 
+    # CODE_SENT_SMS   = ('<title>We have sent an access code - Census 2021</title>',
+    #                     'We have sent a text to',
+    #                     'Ready to start your census online?')
 
     def __init__(self, title, extract_start, extract_end):
         self.title = title
         self.extract_start = extract_start
         self.extract_end = extract_end
 
-        
+
 """
 This sequence is the principle route used to simulate a user:
   - Arrive at start page
   - Enter a valid UAC
   - Confirm address to launch EQ
 """
+
+
 class LaunchEQ(SequentialTaskSet):
     """
     Class to represent a user entering a UAC and launching EQ.
     """
-
 
     # assume all users arrive at the start page
     @task
@@ -112,14 +117,17 @@ class LaunchEQ(SequentialTaskSet):
         """
         POST address confirmation
         """
-        with self.client.post("/en/start/confirm-address/", {"address-check-answer": "Yes"}, allow_redirects=False, catch_response=True) as response:
+        with self.client.post("/en/start/confirm-address/", {"address-check-answer": "Yes"}, allow_redirects=False,
+                              catch_response=True) as response:
             verify_response('Launch-ConfirmAddr', self, response, 302, Page.EQ_LAUNCHED)
 
 
 """
 This sequence simulates a user who mistypes their UAC.
 The incorrect UAC is 16 characters long so it will still trigger the call to RHSvc.
-""" 
+"""
+
+
 class LaunchEQInvalidUAC(SequentialTaskSet):
     """
     Class to represent a user who enters an incorrect UAC.
@@ -148,26 +156,29 @@ This task sequence simulates a user launching EQ with a corrected address.
 This is virtually the same as 'launch_EQ' except that after entering a UAC
 the user says that their address is not correct and enters a corrected address.
 The address correction exercises different backend code. 
-"""    
+"""
+
+
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
     # assume all users arrive at the start page
     @task(1)
     def start_page(self):
         self.case = get_next_case()
-    
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
-        
     @task(2)
     def enter_valid_uac(self):
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT,
+                            self.case["addressLine1"])
 
     @task(3)
     def select_address_not_correct(self):
-        with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False, catch_response=True) as response:
+        with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False,
+                              catch_response=True) as response:
             verify_response('AddrCorrection-ConfirmAddr', self, response, 200, Page.ADDRESS_CORRECT)
 
     @task(4)
@@ -179,7 +190,8 @@ class LaunchEQwithAddressCorrection(SequentialTaskSet):
             'address-town': 'Exeter',
             'address-postcode': 'EX'
         }, allow_redirects=False)
-        verify_response('AddrCorrection-CorrectAddr', self, response, 200, Page.ADDRESS_CORRECT, 'TODO-Get working on latest RH')
+        verify_response('AddrCorrection-CorrectAddr', self, response, 200, Page.ADDRESS_CORRECT,
+                        'TODO-Get working on latest RH')
 
 
 """
@@ -187,6 +199,8 @@ This task sequence simulates a user following the 'request a new code' sequence 
 The simulated user steps through the pages one by one. They don't go down any of the 
 correction/error paths as this doesn't trigger any significant server side work.
 """
+
+
 class request_new_code_sms(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
@@ -200,7 +214,7 @@ class request_new_code_sms(SequentialTaskSet):
         self.case = get_next_case()
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-Start', self, response, 200, Page.START)
-        
+
     @task(2)
     def enter_postcode(self):
         """
@@ -209,7 +223,8 @@ class request_new_code_sms(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS, self.case["postcode"])
+            verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+                            self.case["postcode"])
 
     @task(3)
     def select_address(self):
@@ -248,7 +263,7 @@ class request_new_code_sms(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-mobile/", {
             'request-mobile-number': '07714 330 933'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE , "0933")
+            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, "933")
 
     @task(7)
     def confirm_mobile_number(self):
@@ -258,7 +273,7 @@ class request_new_code_sms(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-mobile/", {
             'request-mobile-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT_SMS , "0933")
+            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT)
 
     @task(8)
     def code_sent_sms(self):
@@ -266,7 +281,7 @@ class request_new_code_sms(SequentialTaskSet):
         GET page confirming UAC has been sent via SMS
         """
         with self.client.get('/en/requests/access-code/code-sent-sms/', catch_response=True) as response:
-            verify_response('RequestUacSms-CodeSentSms', self, response, 200, Page.CODE_SENT_SMS)
+            verify_response('RequestUacSms-CodeSentSms', self, response, 200, Page.CODE_SENT)
 
 
 class request_new_code_post(SequentialTaskSet):
@@ -289,7 +304,8 @@ class request_new_code_post(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS, self.case["postcode"])
+            verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+                            self.case["postcode"])
 
     @task(3)
     def select_address(self):
@@ -327,25 +343,31 @@ class request_new_code_post(SequentialTaskSet):
         """
         with self.client.post("/en/requests/access-code/enter-name/", {
             'name_first_name': 'John',
-            'name_last_name' : 'Smith'
+            'name_last_name': 'Smith'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME, "<strong>John Smith</strong>")
+            verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
+                            "<strong>John Smith</strong>")
 
-    # @task(7)
-    # def confirm_name_address(self):
-    #     self.client.post("/en/requests/access-code/confirm-name-address", {
-    #         'request-name-address-confirmation': 'yes'
-    #     })
-    #
+    @task(7)
+    def confirm_name_address(self):
+        """
+        POST 'yes' to confirm name and address
+        """
+        with self.client.post("/en/requests/access-code/confirm-name-address/", {
+            'request-name-address-confirmation': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, "John Smith")
+
     # @task(8)
     # def code_sent_post(self):
     #     self.client.get("/en/requests/access-code/code-sent-post")
+
 
 class launch_web_chat(SequentialTaskSet):
     """
     This task sequence simulates a user launching web chat.
     """
-    
+
     def on_start(self):
         self.urls_on_current_page = self.toc_urls = None
 
@@ -353,7 +375,7 @@ class launch_web_chat(SequentialTaskSet):
     @task(1)
     def start_page(self):
         self.client.get("/en/start/")
-        
+
     @task(2)
     def start_web_chat(self):
         self.client.get("/webchat")
@@ -366,6 +388,7 @@ class launch_web_chat(SequentialTaskSet):
             'query': 'technical'
         }, allow_redirects=False)
 
+
 class WebsiteUser(HttpUser):
     tasks = {
         LaunchEQ: 0,
@@ -376,6 +399,7 @@ class WebsiteUser(HttpUser):
         launch_web_chat: 0
     }
     wait_time = between(2, 10)
+
 
 """
 This function should be called after each page transition as it aims to aggressively check that:
@@ -388,6 +412,8 @@ In the event of failure it:
   - For the error log it records the failure message and key content of the current page.
   - Aborts the current task.
 """
+
+
 def verify_response(id, task, resp, expected_status, expected_page, expected_content=''):
     # print ('In verify_response(%s). Expected:%3d actual:%3d expected_page:%s' % (id, expected_status, resp.status_code, expected_page))
     # print ('  URL:%s' % (resp.url))
@@ -405,13 +431,13 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
     if current_page != expected_page:
         failure_message = f'On wrong page. Expected to be on {expected_page.name} page but am on {current_page.name} page.'
         report_failure(id, resp, task, failure_message, page_extract)
-    
+
     # Status check
     if expected_status != resp.status_code:
         failure_message = f'Status mismatch. Expected {expected_status} but was {resp.status_code}.'
-        report_failure(id, resp, task, failure_message, page_extract)        
-    
-    # Content verification
+        report_failure(id, resp, task, failure_message, page_extract)
+
+        # Content verification
     if expected_content:
         # Convert expected apostrophes to HTML equivalent
         if "'" in expected_content:
@@ -420,15 +446,17 @@ def verify_response(id, task, resp, expected_status, expected_page, expected_con
         if expected_content not in resp.text:
             failure_message = f'{current_page.name} page does not contain expected text ({expected_content}).'
             report_failure(id, resp, task, failure_message, page_extract)
-    
+
     resp.success()
 
-    
+
 """
 Reports a test failure:
   - the error is reported to Locust
   - an error is logged with either whole or partial page content
 """
+
+
 def report_failure(id, resp, task, failure_message, page_content):
     error_detail = ''
     if page_content:
@@ -436,11 +464,11 @@ def report_failure(id, resp, task, failure_message, page_content):
 
     resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
     logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
-    
+
     # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
     # Note that this sleep does not affect the progress of other tasks
     time.sleep(5.0)
-    
+
     task.interrupt()
 
 
@@ -448,9 +476,11 @@ def report_failure(id, resp, task, failure_message, page_content):
 Identifies the current page based on its content.
 It returns a Page enum value if the page can be identified, or fails the test if it cannot.
 """
+
+
 def identify_page(id, task, resp):
-    page_content=resp.text
-    
+    page_content = resp.text
+
     for page in Page:
         if page.title in page_content:
             return page
@@ -458,42 +488,49 @@ def identify_page(id, task, resp):
     # Identification failed
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
-    
+
+
 """
 Returns the key content for the current page.
 If the enum data for the current_page doesn't have start and end markers set then
 the whole page content is returned.
 Excess blank lines are removed to help condense the output.
 """
+
+
 def extract_key_page_content(id, task, resp, current_page):
     # Use page content if start/end markers not set for the page
     if (not current_page.extract_start) or (not current_page.extract_end):
         return clean_text(resp.text)
-        
+
     # Grab key page content
     start = resp.text.find(current_page.extract_start)
     end = resp.text.find(current_page.extract_end, start)
     extract = resp.text[start:end]
     page_extract = clean_text(extract)
-    
+
     # Fail if page doesn't contain expected start/end text
-    if start < 0 or end <0:
+    if start < 0 or end < 0:
         failure_message = f'Could not find start/end text on the {current_page.name} page. Offsets found {start},{end}'
-        report_failure(id, resp, task, failure_message, clean_text(resp.text))        
-    
+        report_failure(id, resp, task, failure_message, clean_text(resp.text))
+
     return page_extract
-    
+
 
 """
 Removes blank lines from supplied text
 """
+
+
 def clean_text(text):
     return re.sub(r'\n\s*\n', '\n', text, flags=re.MULTILINE)
+
 
 @events.test_start.add_listener
 def on_test_start(**kw):
     print("test is starting")
     setup()
+
 
 @events.test_stop.add_listener
 def on_test_stop(**kw):
