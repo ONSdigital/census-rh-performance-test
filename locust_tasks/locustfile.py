@@ -201,7 +201,7 @@ correction/error paths as this doesn't trigger any significant server side work.
 """
 
 
-class request_new_code_sms(SequentialTaskSet):
+class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
@@ -284,7 +284,7 @@ class request_new_code_sms(SequentialTaskSet):
             verify_response('RequestUacSms-CodeSentSms', self, response, 200, Page.CODE_SENT)
 
 
-class request_new_code_post(SequentialTaskSet):
+class RequestNewCodePost(SequentialTaskSet):
 
     # All users arrive at the start page
     @task(1)
@@ -367,7 +367,7 @@ class request_new_code_post(SequentialTaskSet):
             verify_response('RequestUacPost-CodeSentPost', self, response, 200, Page.CODE_SENT, "John Smith")
 
 
-class launch_web_chat(SequentialTaskSet):
+class LaunchWebChat(SequentialTaskSet):
     """
     This task sequence simulates a user launching web chat.
     """
@@ -394,13 +394,20 @@ class launch_web_chat(SequentialTaskSet):
 
 
 class WebsiteUser(HttpUser):
+    """
+    The following task sets should currently work:
+
+    And the following are currently broken:
+    - LaunchEQInvalidUAC
+    - LaunchEQwithAddressCorrection
+    """
     tasks = {
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code_sms: 50,
-        request_new_code_post: 50,
-        launch_web_chat: 0
+        RequestNewCodeSMS: 1,
+        RequestNewCodePost: 1,
+        LaunchWebChat: 0
     }
     wait_time = between(2, 10)
 
