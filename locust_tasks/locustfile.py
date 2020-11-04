@@ -396,7 +396,10 @@ class LaunchWebChat(SequentialTaskSet):
 class WebsiteUser(HttpUser):
     """
     The following task sets should currently work:
-
+    - LaunchEQ
+    - RequestNewCodeSMS
+    - RequestNewCodePost
+    - LaunchWebChat
     And the following are currently broken:
     - LaunchEQInvalidUAC
     - LaunchEQwithAddressCorrection
@@ -406,8 +409,8 @@ class WebsiteUser(HttpUser):
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 1,
-        RequestNewCodePost: 1,
-        LaunchWebChat: 0
+        RequestNewCodePost: 0,
+        LaunchWebChat: 1
     }
     wait_time = between(2, 10)
 
