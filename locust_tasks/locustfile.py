@@ -70,9 +70,6 @@ class Page(Enum):
                  '',
                  '')
 
-    # CODE_SENT_SMS   = ('<title>We have sent an access code - Census 2021</title>',
-    #                     'We have sent a text to',
-    #                     'Ready to start your census online?')
 
     def __init__(self, title, extract_start, extract_end):
         self.title = title
@@ -205,6 +202,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
+    addressToSelect = ""
 
     @task(1)
     def start_page(self):
@@ -223,6 +221,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
+            get_whole_address(response, self.case["uprn"])
+            # logger.info("Address to select: " + self.addressToSelect)
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
@@ -312,7 +312,7 @@ class RequestNewCodePost(SequentialTaskSet):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
         with self.client.post("/en/requests/access-code/select-address/", {
-            'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
+            'form-select-address': '{"uprn": self.case["uprn"], "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
         }, catch_response=True) as response:
             verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "37 Sinah Lane")
 
@@ -410,7 +410,7 @@ class WebsiteUser(HttpUser):
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 1,
         RequestNewCodePost: 0,
-        LaunchWebChat: 1
+        LaunchWebChat: 0
     }
     wait_time = between(2, 10)
 
@@ -502,6 +502,15 @@ def identify_page(id, task, resp):
     # Identification failed
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
+
+
+def get_whole_address(resp, uprn):
+    page_content = resp.text
+    page_extract1 = page_content[page_content.index(uprn):]
+    page_extract2 = page_extract1[:page_extract1.index("&#34;}")]
+    address_to_select = page_extract2.split("&#34;",7)[7]
+    logger.info("page extract: " + page_extract2)
+    logger.info("address extracted: " + address_to_select)
 
 
 """
