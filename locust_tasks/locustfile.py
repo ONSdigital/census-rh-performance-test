@@ -219,6 +219,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST postcode
         """
+        global address_to_select
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
@@ -231,6 +232,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
     def select_address(self):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
+        logger.info("Address selected: " + address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
         }, catch_response=True) as response:
@@ -512,8 +514,7 @@ def get_whole_address(resp, uprn):
     page_extract1 = page_content[page_content.index(uprn):]
     page_extract2 = page_extract1[:page_extract1.index("&#34;}")]
     address_to_select = page_extract2.split("&#34;",7)[7]
-    logger.info("page extract: " + page_extract2)
-    logger.info("address extracted: " + address_to_select)
+    logger.info("Address extracted: " + address_to_select)
 
     return address_to_select
 
