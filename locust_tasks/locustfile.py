@@ -202,7 +202,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
-    addressToSelect = ""
+    # def __init__(self, address_to_select):
+    #     self.address_to_select = address_to_select
 
     @task(1)
     def start_page(self):
@@ -221,8 +222,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            get_whole_address(response, self.case["uprn"])
-            # logger.info("Address to select: " + self.addressToSelect)
+            address_to_select = get_whole_address(response, self.case["uprn"])
+            logger.info("Address to select: " + address_to_select)
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
@@ -503,7 +504,9 @@ def identify_page(id, task, resp):
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
 
-
+"""
+Returns the address that corresponds to the uprn. This can then be used to select the correct address from the page.
+"""
 def get_whole_address(resp, uprn):
     page_content = resp.text
     page_extract1 = page_content[page_content.index(uprn):]
@@ -512,6 +515,7 @@ def get_whole_address(resp, uprn):
     logger.info("page extract: " + page_extract2)
     logger.info("address extracted: " + address_to_select)
 
+    return address_to_select
 
 """
 Returns the key content for the current page.
@@ -519,8 +523,6 @@ If the enum data for the current_page doesn't have start and end markers set the
 the whole page content is returned.
 Excess blank lines are removed to help condense the output.
 """
-
-
 def extract_key_page_content(id, task, resp, current_page):
     # Use page content if start/end markers not set for the page
     if (not current_page.extract_start) or (not current_page.extract_end):
