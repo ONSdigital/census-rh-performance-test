@@ -234,9 +234,9 @@ class RequestNewCodeSMS(SequentialTaskSet):
         # with a fixed address doesn't seem to affect the success of the test
         logger.info("Address selected: " + address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
-            'form-select-address': '{"uprn": "100060447632", "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
+            'form-select-address': '{"uprn": "100021775714", "address": "Wych Elm, Fitzgeorge Avenue, New Malden, KT3 4SH"}'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "37 Sinah Lane")
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "Wych Elm")
 
     @task(4)
     def confirm_address(self):
