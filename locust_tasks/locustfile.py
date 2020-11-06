@@ -498,7 +498,7 @@ def extractAddress(resp, uprn):
     page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
     page_extract2 = page_extract2.rstrip()
     address_to_select = page_extract2[7:-1]
-    # address_to_select = page_extract2.split("&#34;",7)[7]
+    address_to_select = address_to_select.replace('&#34;', '"')
     logger.info("Address extracted: " + address_to_select)
 
     return address_to_select
