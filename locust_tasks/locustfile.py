@@ -219,12 +219,11 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST postcode
         """
-        global address_to_select
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            address_to_select = get_whole_address(response, self.case["uprn"])
-            logger.info("Address to select: " + address_to_select)
+            self.address_to_select = extractAddress(response, self.case["uprn"])
+            logger.info("Address to select: " + self.address_to_select)
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
@@ -232,7 +231,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
     def select_address(self):
         # This code should arguably select one of the available addresses but running
         # with a fixed address doesn't seem to affect the success of the test
-        logger.info("Address selected: " + address_to_select)
+        logger.info("Address selected: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': '{"uprn": "100021775714", "address": "Wych Elm, Fitzgeorge Avenue, New Malden, KT3 4SH"}'
         }, catch_response=True) as response:
@@ -509,7 +508,7 @@ def identify_page(id, task, resp):
 """
 Returns the address that corresponds to the uprn. This can then be used to select the correct address from the page.
 """
-def get_whole_address(resp, uprn):
+def extractAddress(resp, uprn):
     page_content = resp.text
     page_extract1 = page_content[page_content.index(uprn):]
     page_extract2 = page_extract1[:page_extract1.index("&#34;}")]
