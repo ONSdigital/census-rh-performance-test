@@ -296,17 +296,20 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
+            self.address_to_select = extractAddress(response, self.case["uprn"])
             verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
     @task(3)
     def select_address(self):
-        # This code should arguably select one of the available addresses but running
-        # with a fixed address doesn't seem to affect the success of the test
+        """
+        POST uprn and whole address extracted as JSON from the HTML in previous task
+        """
+        logger.info("Address selected: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
-            'form-select-address': '{"uprn": self.case["uprn"], "address": "37 Sinah Lane, Hayling Island, PO11 0HJ"}'
+            'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "37 Sinah Lane")
+            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
     @task(4)
     def confirm_address(self):
@@ -392,8 +395,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 1,
-        RequestNewCodePost: 0,
+        RequestNewCodeSMS: 0,
+        RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
     wait_time = between(2, 10)
