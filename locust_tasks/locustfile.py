@@ -277,14 +277,6 @@ class RequestNewCodeSMS(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT)
 
-    @task(8)
-    def code_sent_sms(self):
-        """
-        GET page confirming UAC has been sent via SMS
-        """
-        with self.client.get('/en/requests/access-code/code-sent-sms/', catch_response=True) as response:
-            verify_response('RequestUacSms-CodeSentSms', self, response, 200, Page.CODE_SENT)
-
 
 class RequestNewCodePost(SequentialTaskSet):
 
@@ -359,14 +351,6 @@ class RequestNewCodePost(SequentialTaskSet):
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
             verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, "John Smith")
-
-    @task(8)
-    def code_sent_post(self):
-        """
-        GET page confirming UAC has been sent via post
-        """
-        with self.client.get('/en/requests/access-code/code-sent-post/', catch_response=True) as response:
-            verify_response('RequestUacPost-CodeSentPost', self, response, 200, Page.CODE_SENT, "John Smith")
 
 
 class LaunchWebChat(SequentialTaskSet):
@@ -510,9 +494,11 @@ Returns the address that corresponds to the uprn. This can then be used to selec
 """
 def extractAddress(resp, uprn):
     page_content = resp.text
-    page_extract1 = page_content[page_content.index(uprn):]
-    page_extract2 = page_extract1[:page_extract1.index("&#34;}")]
-    address_to_select = page_extract2.split("&#34;",7)[7]
+    page_extract1 = page_content[page_content.index('id="' + uprn + '"'):]
+    page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
+    page_extract2 = page_extract2.rstrip()
+    address_to_select = page_extract2[7:-1]
+    # address_to_select = page_extract2.split("&#34;",7)[7]
     logger.info("Address extracted: " + address_to_select)
 
     return address_to_select
