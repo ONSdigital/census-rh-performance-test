@@ -202,8 +202,6 @@ class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
-    # def __init__(self, address_to_select):
-    #     self.address_to_select = address_to_select
 
     @task(1)
     def start_page(self):
@@ -223,19 +221,19 @@ class RequestNewCodeSMS(SequentialTaskSet):
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
             self.address_to_select = extractAddress(response, self.case["uprn"])
-            logger.info("Address to select: " + self.address_to_select)
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
     @task(3)
     def select_address(self):
-        # This code should arguably select one of the available addresses but running
-        # with a fixed address doesn't seem to affect the success of the test
+        """
+        POST uprn and whole address extracted as JSON from the HTML in previous task
+        """
         logger.info("Address selected: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
-            'form-select-address': '{"uprn": "100021775714", "address": "Wych Elm, Fitzgeorge Avenue, New Malden, KT3 4SH"}'
+            'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, "Wych Elm")
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
     @task(4)
     def confirm_address(self):
