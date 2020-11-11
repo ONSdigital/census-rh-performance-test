@@ -56,6 +56,8 @@ Again, this is using the RH in the performance environment, which will also requ
     $ # In another window start the worker
     $ locust -f locust_tasks/locustfile.py --host https://performance-rh.int.census-gcp.onsdigital.uk --worker --master-host=localhost 
 
+When both the master and worker are running you can start a test run from the browser at http://localhost:8089/
+
 
 ### Build Docker image and run locally 
 
@@ -100,16 +102,19 @@ To build and publish the docker image CATD recommended:
     $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
     $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
 
-To deploy the master:
+To deploy the master and a single worker:
 
     $ gcp rh loadgen
-    $ kubectl apply -f kubernetes_config/master-deployment.yaml
-    $ kubectl apply -f kubernetes_config/master-service.yaml
+    $ cd <sourc-dir>/census-rh-performance-test
+    $ # edit master-deployment.yaml to set the image and a blank value for the rabitmq_connection
+    $ kubectl apply -f kubernetes/master-deployment.yaml
+    $ kubectl apply -f kubernetes/master-service.yaml
     
 To deploy the worker (and get the generateWorkerManifests script to substitute the remaining placeholders) you'll
-need something like:
+need something like the following:
 
     $ cp kubernetes_config/worker-deployment.yaml /tmp
+    $ # edit worker-deployment.yaml to set: image, target_host and rabbitmq_connection
     $ cd <source-dir>/census-int-utility/scripts
     $ ./generateWorkerManifests.sh /tmp/worker-deployment.yaml /tmp/locustWorkers <num>
     $ kubectl apply -f /tmp/locustWorkers
@@ -119,7 +124,10 @@ To delete Locust deployment:
     $ gcp rh loadgen
     $ kubectl delete svc locust-master
     $ kubectl delete deployment locust-master
+    $ # To delete single worker instance
     $ kubectl delete deployment locust-worker
+    $ # To delete multiple workers, whose descriptor was created by the generateWorkersManifests script:
+    $ kubectl delete -f /tmp/locustWorkers
 
 Once the services have been deployed you should be able to open a browser and go to the Locust master control panel.
 You can launch it from the browser by firstly in GCP switching to the census-rh-loadgen environment. They go to 'Services & Ingress -> locust-master' and click on the port 80 external endpoint.
@@ -145,16 +153,10 @@ To run in the browser firstly start Locust and then point the browser at the Loc
 
 	$ locust -f locust_tasks/locustfile.py --host http://localhost:9092
 
-### Run - Local Locust against RH in GCP
 
-As before you'll probably need to be running the latest Python 3.7.x. 
+### Comments about performance run of RH in GCP
 
-To run a local Locust to generate traffic for a RH which is deployed in GCP then 
-you'll need a command like:
-
-    $ locust -f locust_tasks/locustfile.py --no-web --clients 750 --hatch-rate 20 --csv-full-history --csv /tmp/rhui.csv --reset-stats --host=http://34.107.206.101
-
-I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust.
+I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust. See above for notes on running headless Locust locally.
 
 It's also a good way of quickly testing changes to locustfile.py.
 
@@ -162,6 +164,7 @@ To avoid misleading statistics it's worth doing a '--reset-stats', so that the s
 
 To **debug** errors look at the detailed failure information in the locust-worker logs. If the failure is reproducible
 then it's usually easiest to run a local locust against the failing RH in census-rh-performance. 
+
 
 ### Real world Locust comments
 
