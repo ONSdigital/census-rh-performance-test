@@ -5,9 +5,10 @@ import logging
 import time
 from enum import Enum
 from locust import HttpUser, TaskSet, between, SequentialTaskSet, task, events
+from locust.runners import MasterRunner
 
 sys.path.append(os.getcwd())
-from locust_tasks.setup import setup, get_next_case
+from locust_tasks.setup import setup_master, setup_worker, get_next_case
 
 logger = logging.getLogger('performance')
 
@@ -551,10 +552,19 @@ def clean_text(text):
 
 @events.test_start.add_listener
 def on_test_start(**kw):
-    print("test is starting")
-    setup()
+    logger.info("locustfile.py - Test is starting")
 
 
 @events.test_stop.add_listener
 def on_test_stop(**kw):
-    print("test is stopping")
+    logger.info("locustfile.py - Test is stopping")
+    
+
+@events.init.add_listener
+def on_locust_init(environment, **kwargs):
+    if isinstance(environment.runner, MasterRunner):
+        logger.info("Running as a MASTER node")
+        setup_master()
+    else:
+        logger.info("Running as a WORKER node")
+        setup_worker()
