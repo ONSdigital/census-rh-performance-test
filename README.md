@@ -2,17 +2,60 @@
 
 Code related to the performance testing of RH
 
+
 ## Locust
 
 For details about using Locust for load testing see https://docs.locust.io/en/stable/index.html
 
 
+### Test data
+
+In order to run Locust you'll need to populate the environment with some cases/uacs.
+This can be done by running the 'sampleGenerator' program. See the Readme in census-int-utility for notes on how to run this.
+
+Alternatively the environment may already contain some test data which can be reused, and you can get an event\_data.txt from the previous user of the environment.
+
+In any case you'll end up with a populated test\_data/event\_data.txt file which lists the data in your target environment:
+
+    $ cat test_data/event_data.txt 
+    uac,uprn,addressLine1,postcode
+    89G4NBM83RFGXW6G,200002136746,20, BN18 0ST
+    N5QQZP2WDK3LX9ZZ,100010914979,196 Paulhan Street, BL3 3DX
+    72B7TPRGM5HY7QXP,100021775714,Wych Elm, KT3 4SH
+    Y6XKSYN8ND56QWK3,100040115266,16 St Dominic Street, TR18 2DL
+    ...
+
+
 ### Run - Local
 
-Clone the repository. Change to the census-rh-performance-test directory where the repository was cloned. Run
+Firstly make sure that you have set up your environment:
+* Clone the census-rh-performance-test repository and 'cd' into it.
+* You are running Python 3.7.7
+* You have run 'pip3 install locust'. Running 'locust --version' should then return something like 'locust 1.3.2'.
+* Do a pip3 install for other dependencies. Please update this readme with a list once known.
+
+To run Locust on the command line:
 
     $ pipenv shell
-    $ locust -f ./locust_tasks/locustfile.py  --host=http://localhost:9092
+    $ 
+    $ # To run using RH in performance:
+    $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host https://performance-rh.int.census-gcp.onsdigital.uk 2>&1
+    $ 
+    $ # To run against a local RH:
+    $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host http://localhost:9092
+
+
+### Running in master / slave mode
+
+To run Locust in master / slave mode, as is done in the performance environment, you can do the following. 
+Again, this is using the RH in the performance environment, which will also require event data to match that environment.
+
+    $ # start the master 
+    $ locust -f locust_tasks/locustfile.py --host https://performance-rh.int.census-gcp.onsdigital.uk --master
+    $ 
+    $ # In another window start the worker
+    $ locust -f locust_tasks/locustfile.py --host https://performance-rh.int.census-gcp.onsdigital.uk --worker --master-host=localhost 
+
 
 ### Build Docker image and run locally 
 
