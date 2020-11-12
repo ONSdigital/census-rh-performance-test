@@ -341,7 +341,7 @@ class RequestNewCodePost(SequentialTaskSet):
             'name_last_name': 'Smith'
         }, catch_response=True) as response:
             verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
-                            "<strong>John Smith</strong>")
+                            "John Smith<br>")
 
     @task(7)
     def confirm_name_address(self):
