@@ -11,7 +11,10 @@ For details about using Locust for load testing see https://docs.locust.io/en/st
 ### Test data
 
 In order to run Locust you'll need to populate the environment with some cases/uacs.
-This can be done by running the 'sampleGenerator' program. See the Readme in census-int-utility for notes on how to run this.
+This can be done by running the 'sampleGenerator' program, which will feed randomly generated cases and uacs to RH's input queues.
+See the Readme in census-int-utility for notes on how to run this.
+
+The sampleGenerator program will output an eventData.csv file. This needs to be copied and pasted to overwrite the contents of 'test\_data/event\_data.txt' so that the worker deployments will contain the correct test data.
 
 Alternatively the environment may already contain some test data which can be reused, and you can get an event\_data.txt from the previous user of the environment.
 
@@ -33,10 +36,16 @@ Firstly make sure that you have set up your environment:
 * You are running Python 3.7.7
 * You have run 'pip3 install locust'. Running 'locust --version' should then return something like 'locust 1.3.2'.
 * Do a pip3 install for other dependencies. Please update this readme with a list once known.
+* Set the INSTANCE\_NUM and MAX\_INSTANCES environment variables (ideally add to your .bashrc). See the 'Environment configuration items' section for their definition. 
 
 To run Locust on the command line:
 
     $ pipenv shell
+    $
+    $ # Force the Locust script to read the whole event data file.  
+    $ # ie. this will be locust instance 1 out of a grand total of 1
+    $ export INSTANCE_NUM=1
+    $ export MAX_INSTANCES=1
     $ 
     $ # To run using RH in performance:
     $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host https://performance-rh.int.census-gcp.onsdigital.uk 2>&1
@@ -45,9 +54,9 @@ To run Locust on the command line:
     $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host http://localhost:9092
 
 
-### Running in master / slave mode
+### Running in master / worker mode
 
-To run Locust in master / slave mode, as is done in the performance environment, you can do the following. 
+To run Locust in master / worker mode, as is done in the performance environment, you can do the following. 
 Again, this is using the RH in the performance environment, which will also require event data to match that environment.
 
     $ # start the master 
@@ -240,7 +249,7 @@ There are a number of environment variable configuration items which can be set:
 * UAC\_ROUTING\_KEY default 'event.uac.update'
 * CASE\_ROUTING\_KEY default 'event.case.update'
 * DATA\_PUBLISH default false, whether to publish test data to Firestore
-* INSTANCE\_NUM no default. Is the instance number for the current run. Numbered from 1 ... MAX\_INSTANCES.
+* INSTANCE\_NUM no default. Is the instance number for the current run. Numbered from 1 .. MAX\_INSTANCES.
 The Locust test will read its own section of the event data file. For example, if the event data 
 file has 100 cases then instance 3 of 4 will read cases 51 to 75, which will then be sequentially
 used these during testing.
