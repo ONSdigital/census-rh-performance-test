@@ -105,8 +105,8 @@ To build and publish the docker image CATD recommended:
 To deploy the master and a single worker:
 
     $ gcp rh loadgen
-    $ cd <sourc-dir>/census-rh-performance-test
-    $ # edit master-deployment.yaml to set the image and a blank value for the rabitmq_connection
+    $ cd <source-dir>/census-rh-performance-test
+    $ # edit master-deployment.yaml to set the image and a blank value for the [RABBITMQ_CONNECTION]
     $ kubectl apply -f kubernetes/master-deployment.yaml
     $ kubectl apply -f kubernetes/master-service.yaml
     
