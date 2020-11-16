@@ -4,10 +4,11 @@ import re
 import logging
 import time
 from enum import Enum
-from locust import HttpLocust, TaskSequence, TaskSet, seq_task, between
+from locust import HttpUser, TaskSet, between, SequentialTaskSet, task, events
+from locust.runners import MasterRunner
 
 sys.path.append(os.getcwd())
-from locust_tasks.setup import setup, get_next_case
+from locust_tasks.setup import setup_master, setup_worker, get_next_case
 
 logger = logging.getLogger('performance')
 
@@ -24,8 +25,8 @@ If the extract start/end is not specified then the whole page will be added to t
 """ 
 class Page(Enum):
     START           = ('<title>Start census - Census 2021</title>',
-                       'Start Census</h1>',
-                       'Enter the 16 character code'
+                       'Start census</h1>',
+                       'Enter your 16-character access code'
     				  )
     ADDRESS_CORRECT = ('<title>Is this the correct address? - Census 2021</title>',
                        '<h1 class="question__title">',
@@ -61,13 +62,13 @@ This sequence is the principle route used to simulate a user:
   - Enter a valid UAC
   - Confirm address to launch EQ
 """
-class LaunchEQ(TaskSequence):
+class LaunchEQ(SequentialTaskSet):
     """
     Class to represent a user entering a UAC and launching EQ.
     """
 
     # assume all users arrive at the start page
-    @seq_task(1)
+    @task
     def get_uac(self):
         """
         GET Start page
@@ -77,7 +78,7 @@ class LaunchEQ(TaskSequence):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
-    @seq_task(2)
+    @task
     def post_uac(self):
         """
         POST a valid UAC
@@ -86,7 +87,7 @@ class LaunchEQ(TaskSequence):
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
-    @seq_task(3)
+    @task
     def post_address_is_correct(self):
         """
         POST address confirmation
@@ -98,14 +99,14 @@ class LaunchEQ(TaskSequence):
 """
 This sequence simulates a user who mistypes their UAC.
 The incorrect UAC is 16 characters long so it will still trigger the call to RHSvc.
-""" 
-class LaunchEQInvalidUAC(TaskSequence):
+"""
+class LaunchEQInvalidUAC(SequentialTaskSet):
     """
     Class to represent a user who enters an incorrect UAC.
     """
 
     # assume all users arrive at the start page
-    @seq_task(1)
+    @task(1)
     def get_uac(self):
         """
         GET Start page
@@ -113,7 +114,7 @@ class LaunchEQInvalidUAC(TaskSequence):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
-    @seq_task(2)
+    @task(2)
     def post_uac(self):
         """
         POST an invalid UAC
@@ -128,28 +129,27 @@ This is virtually the same as 'launch_EQ' except that after entering a UAC
 the user says that their address is not correct and enters a corrected address.
 The address correction exercises different backend code. 
 """    
-class LaunchEQwithAddressCorrection(TaskSequence):
+class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
     # assume all users arrive at the start page
-    @seq_task(1)
+    @task(1)
     def start_page(self):
         self.case = get_next_case()
     
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
-        
-    @seq_task(2)
+    @task(2)
     def enter_valid_uac(self):
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
-    @seq_task(3)
+    @task(3)
     def select_address_not_correct(self):
         with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False, catch_response=True) as response:
             verify_response('AddrCorrection-ConfirmAddr', self, response, 200, Page.ADDRESS_CORRECT)
 
-    @seq_task(4)
+    @task(4)
     def correct_address(self):
         response = self.client.post("/en/start/address-edit", {
             'address-line-1': '1 High Street',
@@ -166,18 +166,18 @@ This task sequence simulates a user following the 'request a new code' sequence 
 The simulated user steps through the pages one by one. They don't go down any of the 
 correction/error paths as this doesn't trigger any significant server side work.
 """
-class request_new_code(TaskSequence):
+class request_new_code(SequentialTaskSet):
 
     # All users arrive at the start page
-    @seq_task(1)
+    @task(1)
     def start_page(self):
         self.client.get("/en/start/")
         
-    @seq_task(2)
+    @task(2)
     def request_new_access_code(self):
         self.client.get("/request-access-code")
 
-    @seq_task(3)
+    @task(3)
     def select_address(self):
         # This code should arguable select one of the available addresses but running 
         # with a fixed address doesn't seem to affect the success of the test
@@ -185,47 +185,47 @@ class request_new_code(TaskSequence):
             'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
         })
 
-    @seq_task(4)
+    @task(4)
     def confirm_address(self):
         self.client.post("/request-access-code/confirm-address", {
             'request-address-confirmation': 'yes'
         })
 
-    @seq_task(5)
+    @task(5)
     def enter_mobile_number(self):
         self.client.post("/request-access-code/enter-mobile", {
             'request-mobile-number': '07714 330 933'
         })
 
-    @seq_task(6)
+    @task(6)
     def confirm_mobile_number(self):
         self.client.post("/request-access-code/confirm-mobile", {
             'request-mobile-confirmation': 'yes'
         })
 
-    @seq_task(7)
+    @task(7)
     def start_for_new_uac(self):
         self.client.get("/en/start/")
 
- 
-class launch_web_chat(TaskSequence):
+
+class launch_web_chat(SequentialTaskSet):
     """
     This task sequence simulates a user launching web chat.
     """
-    
+
     def on_start(self):
         self.urls_on_current_page = self.toc_urls = None
 
     # assume all users arrive at the start page
-    @seq_task(1)
+    @task(1)
     def start_page(self):
         self.client.get("/en/start/")
-        
-    @seq_task(2)
+
+    @task(2)
     def start_web_chat(self):
         self.client.get("/webchat")
 
-    @seq_task(3)
+    @task(3)
     def enter_web_chat_query(self):
         self.client.post("/webchat", {
             'screen_name': 'Fred Smith',
@@ -234,7 +234,7 @@ class launch_web_chat(TaskSequence):
         }, allow_redirects=False)
 
 
-class UserBehavior(TaskSet):
+class WebsiteUser(HttpUser):
     """
     This class controls the balance of the tasks which simulated users are performing.
     TODO: Adjust to a more representative balance. (Currently set for development)
@@ -247,14 +247,8 @@ class UserBehavior(TaskSet):
         request_new_code: 0,
         launch_web_chat: 0
     }
-
-
-class WebsiteUser(HttpLocust):
-    task_set = UserBehavior
+    
     wait_time = between(2, 10)
-
-    def setup(self):
-        setup()
 
 
 """
@@ -371,3 +365,13 @@ Removes blank lines from supplied text
 """
 def clean_text(text):
     return re.sub(r'\n\s*\n', '\n', text, flags=re.MULTILINE)
+
+
+@events.init.add_listener
+def on_locust_init(environment, **kwargs):
+    if isinstance(environment.runner, MasterRunner):
+        logger.info("Running as a MASTER node")
+        setup_master()
+    else:
+        logger.info("Running as a WORKER node")
+        setup_worker()
