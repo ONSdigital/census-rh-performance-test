@@ -2,17 +2,72 @@
 
 Code related to the performance testing of RH
 
+
 ## Locust
 
 For details about using Locust for load testing see https://docs.locust.io/en/stable/index.html
 
 
+### Test data
+
+In order to run Locust you'll need to populate the environment with some cases/uacs.
+This can be done by running the 'sampleGenerator' program, which will feed randomly generated cases and uacs to RH's input queues.
+See the Readme in census-int-utility for notes on how to run this.
+
+The sampleGenerator program will output an eventData.csv file. This needs to be copied and pasted to overwrite the contents of 'test\_data/event\_data.txt' so that the worker deployments will contain the correct test data.
+
+Alternatively the environment may already contain some test data which can be reused, and you can get an event\_data.txt from the previous user of the environment.
+
+In any case you'll end up with a populated test\_data/event\_data.txt file which lists the data in your target environment:
+
+    $ cat test_data/event_data.txt 
+    uac,uprn,addressLine1,postcode
+    89G4NBM83RFGXW6G,200002136746,20, BN18 0ST
+    N5QQZP2WDK3LX9ZZ,100010914979,196 Paulhan Street, BL3 3DX
+    72B7TPRGM5HY7QXP,100021775714,Wych Elm, KT3 4SH
+    Y6XKSYN8ND56QWK3,100040115266,16 St Dominic Street, TR18 2DL
+    ...
+
+
 ### Run - Local
 
-Clone the repository. Change to the census-rh-performance-test directory where the repository was cloned. Run
+Firstly make sure that you have set up your environment:
+* Clone the census-rh-performance-test repository and 'cd' into it.
+* You are running Python 3.7.7
+* Install greenlet. Probably done with 'pip install --upgrade pip' and 'CC=clang pip install greenlet'.
+* You have run 'pip3 install locust'. Running 'locust --version' should then return something like 'locust 1.3.2'.
+* Do a pip3 install for other dependencies. Please update this readme with a list once known.
+* Set the INSTANCE\_NUM and MAX\_INSTANCES environment variables (ideally add to your .bashrc). See the 'Environment configuration items' section for their definition. 
+
+To run Locust on the command line:
 
     $ pipenv shell
-    $ locust -f ./locust_tasks/locustfile.py  --host=http://localhost:9092
+    $
+    $ # Force the Locust script to read the whole event data file.  
+    $ # ie. this will be locust instance 1 out of a grand total of 1
+    $ export INSTANCE_NUM=1
+    $ export MAX_INSTANCES=1
+    $ 
+    $ # To run using RH in performance:
+    $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host https://performance-rh.int.census-gcp.onsdigital.uk 2>&1
+    $ 
+    $ # To run against a local RH:
+    $ locust -f locust_tasks/locustfile.py --headless --users 1 --spawn-rate 1 --reset-stats --host http://localhost:9092
+
+
+### Running in master / worker mode
+
+To run Locust in master / worker mode, as is done in the performance environment, you can do the following. 
+Again, this is using the RH in the performance environment, which will also require event data to match that environment.
+
+    $ # start the master 
+    $ locust -f locust_tasks/locustfile.py --host https://performance-rh.int.census-gcp.onsdigital.uk --master
+    $ 
+    $ # In another window start the worker
+    $ locust -f locust_tasks/locustfile.py --host https://performance-rh.int.census-gcp.onsdigital.uk --worker --master-host=localhost 
+
+When both the master and worker are running you can start a test run from the browser at http://localhost:8089/
+
 
 ### Build Docker image and run locally 
 
@@ -57,16 +112,19 @@ To build and publish the docker image CATD recommended:
     $ docker tag eu.gcr.io/${PROJECT_ID}/locust-tasks eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
     $ docker push eu.gcr.io/${PROJECT_ID}/locust-tasks:${TAG_NAME}
 
-To deploy the master:
+To deploy the master and a single worker:
 
     $ gcp rh loadgen
-    $ kubectl apply -f kubernetes_config/master-deployment.yaml
-    $ kubectl apply -f kubernetes_config/master-service.yaml
+    $ cd <source-dir>/census-rh-performance-test
+    $ # edit master-deployment.yaml to set the image and a blank value for the [RABBITMQ_CONNECTION]
+    $ kubectl apply -f kubernetes/master-deployment.yaml
+    $ kubectl apply -f kubernetes/master-service.yaml
     
 To deploy the worker (and get the generateWorkerManifests script to substitute the remaining placeholders) you'll
-need something like:
+need something like the following:
 
     $ cp kubernetes_config/worker-deployment.yaml /tmp
+    $ # edit worker-deployment.yaml to set: image, target_host and rabbitmq_connection
     $ cd <source-dir>/census-int-utility/scripts
     $ ./generateWorkerManifests.sh /tmp/worker-deployment.yaml /tmp/locustWorkers <num>
     $ kubectl apply -f /tmp/locustWorkers
@@ -76,7 +134,10 @@ To delete Locust deployment:
     $ gcp rh loadgen
     $ kubectl delete svc locust-master
     $ kubectl delete deployment locust-master
+    $ # To delete single worker instance
     $ kubectl delete deployment locust-worker
+    $ # To delete multiple workers, whose descriptor was created by the generateWorkersManifests script:
+    $ kubectl delete -f /tmp/locustWorkers
 
 Once the services have been deployed you should be able to open a browser and go to the Locust master control panel.
 You can launch it from the browser by firstly in GCP switching to the census-rh-loadgen environment. They go to 'Services & Ingress -> locust-master' and click on the port 80 external endpoint.
@@ -102,16 +163,10 @@ To run in the browser firstly start Locust and then point the browser at the Loc
 
 	$ locust -f locust_tasks/locustfile.py --host http://localhost:9092
 
-### Run - Local Locust against RH in GCP
 
-As before you'll probably need to be running the latest Python 3.7.x. 
+### Comments about performance run of RH in GCP
 
-To run a local Locust to generate traffic for a RH which is deployed in GCP then 
-you'll need a command like:
-
-    $ locust -f locust_tasks/locustfile.py --no-web --clients 750 --hatch-rate 20 --csv-full-history --csv /tmp/rhui.csv --reset-stats --host=http://34.107.206.101
-
-I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust.
+I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust. See above for notes on running headless Locust locally.
 
 It's also a good way of quickly testing changes to locustfile.py.
 
@@ -119,6 +174,7 @@ To avoid misleading statistics it's worth doing a '--reset-stats', so that the s
 
 To **debug** errors look at the detailed failure information in the locust-worker logs. If the failure is reproducible
 then it's usually easiest to run a local locust against the failing RH in census-rh-performance. 
+
 
 ### Real world Locust comments
 
@@ -194,7 +250,7 @@ There are a number of environment variable configuration items which can be set:
 * UAC\_ROUTING\_KEY default 'event.uac.update'
 * CASE\_ROUTING\_KEY default 'event.case.update'
 * DATA\_PUBLISH default false, whether to publish test data to Firestore
-* INSTANCE\_NUM no default. Is the instance number for the current run. Numbered from 1 ... MAX\_INSTANCES.
+* INSTANCE\_NUM no default. Is the instance number for the current run. Numbered from 1 .. MAX\_INSTANCES.
 The Locust test will read its own section of the event data file. For example, if the event data 
 file has 100 cases then instance 3 of 4 will read cases 51 to 75, which will then be sequentially
 used these during testing.

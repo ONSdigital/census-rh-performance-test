@@ -34,15 +34,21 @@ def get_next_case():
     return next_case
 
 
-def setup():
+def setup_master():
     """
     Read CSV file and publish UAC and Case update events to RabbitMQ to seed Firestore with test data if requested.
     """
-
-    global cases
-
+    
     if DATA_PUBLISH:
         publish_test_data()
+
+
+def setup_worker():
+    """
+    Read test data for this worker
+    """
+    
+    global cases
 
     # Read in section of event data file for the current instance
     num_event_rows = get_num_event_data_records()
@@ -84,7 +90,7 @@ def calculate_section_of_event_data_file(number_records):
     
     # Sanity check the instance settings
     if instance_num < 1 or instance_num > max_instances:
-        sys.stdout.write('ERROR: Invalid instance number: %d. Must be in the range 1...%d\n' % (instance_num, max_instances))
+        sys.stdout.write('ERROR: Invalid instance number: %d. Must be in the range 1..%d\n' % (instance_num, max_instances))
         sys.exit(-1)
     if number_records < max_instances:
         sys.exit("ERROR: Event data file too small. There must be at least one worker instance per record in the file") 
@@ -94,7 +100,7 @@ def calculate_section_of_event_data_file(number_records):
     first_record = int(records_per_instance * (instance_num-1))
     last_record = int(records_per_instance * (instance_num)) -1
 
-    logger.info('Instance %d/%d: Event range: %d...%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
+    logger.info('Instance %d/%d: Event range: %d..%d inclusive from %d records\n' % (instance_num, max_instances, first_record, last_record, number_records))
 
     return first_record, last_record
     
