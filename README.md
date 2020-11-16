@@ -34,6 +34,7 @@ In any case you'll end up with a populated test\_data/event\_data.txt file which
 Firstly make sure that you have set up your environment:
 * Clone the census-rh-performance-test repository and 'cd' into it.
 * You are running Python 3.7.7
+* Install greenlet. Probably done with 'pip install --upgrade pip' and 'CC=clang pip install greenlet'.
 * You have run 'pip3 install locust'. Running 'locust --version' should then return something like 'locust 1.3.2'.
 * Do a pip3 install for other dependencies. Please update this readme with a list once known.
 * Set the INSTANCE\_NUM and MAX\_INSTANCES environment variables (ideally add to your .bashrc). See the 'Environment configuration items' section for their definition. 
