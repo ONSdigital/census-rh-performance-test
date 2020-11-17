@@ -48,6 +48,27 @@ class Page(Enum):
                        '',
                        ''
                       )
+    SELECT_ADDRESS = ('<title>Select your address - Census 2021</title>',
+                      '<h1 class="question__title">Select your address</h1>',
+                      'I cannot find my address')
+    SELECT_METHOD = ('<title>How would you like to receive a new access code? - Census 2021</title>',
+                     '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+                     'To request a census in a different format or for further help, please')
+    ENTER_MOBILE = ('<title>What is your mobile phone number? - Census 2021</title>',
+                    '<h1 class="question__title">What is your mobile phone number?</h1>',
+                    'Continue')
+    CONFIRM_MOBILE = ('<title>Is this mobile phone number correct? - Census 2021</title>',
+                      '<h1 class="question__title">Is this mobile phone number correct?</h1>',
+                      'Continue')
+    ENTER_NAME = ('<title>What is your name? - Census 2021</title>',
+                  '<h1 class="question__title">What is your name?</h1>',
+                  'Continue')
+    CONFIRM_NAME = ('<title>Do you want to send a new access code to this address? - Census 2021</title>',
+                    '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
+                    'Continue')
+    CODE_SENT = ('<title>We have sent an access code - Census 2021</title>',
+                 '',
+                 '')
 
   
     def __init__(self, title, extract_start, extract_end):
