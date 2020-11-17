@@ -99,6 +99,7 @@ class LaunchEQ(SequentialTaskSet):
 """
 This sequence simulates a user who mistypes their UAC.
 The incorrect UAC is 16 characters long so it will still trigger the call to RHSvc.
+TODO Fix this class (it currently fails)
 """
 class LaunchEQInvalidUAC(SequentialTaskSet):
     """
@@ -128,6 +129,7 @@ This task sequence simulates a user launching EQ with a corrected address.
 This is virtually the same as 'launch_EQ' except that after entering a UAC
 the user says that their address is not correct and enters a corrected address.
 The address correction exercises different backend code. 
+TODO Fix this class (it currently fails)
 """    
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
@@ -351,11 +353,10 @@ class LaunchWebChat(SequentialTaskSet):
 class WebsiteUser(HttpUser):
     """
     This class controls the balance of the tasks which simulated users are performing.
-    TODO: Adjust to a more representative balance. (Currently set for development)
     """
     
     tasks = {
-        LaunchEQ: 100,
+        LaunchEQ: 1,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 0,
