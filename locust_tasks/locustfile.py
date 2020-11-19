@@ -194,7 +194,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
 
-    @task(1)
+    @task
     def start_page(self):
         """
         GET Start page
@@ -203,7 +203,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-Start', self, response, 200, Page.START)
         
-    @task(2)
+    @task
     def enter_postcode(self):
         """
         POST postcode
@@ -215,7 +215,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
-    @task(3)
+    @task
     def select_address(self):
         """
         POST uprn and whole address extracted as JSON from the HTML in previous task
@@ -226,7 +226,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
-    @task(4)
+    @task
     def confirm_address(self):
         """
         POST 'yes' to confirm address
@@ -236,7 +236,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
 
-    @task(5)
+    @task
     def select_method(self):
         """
         POST 'sms' to select text message as method of sending UACs
@@ -246,7 +246,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE)
 
-    @task(6)
+    @task
     def enter_mobile_number(self):
         """
         POST a mobile number
@@ -256,7 +256,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, "933")
 
-    @task(7)
+    @task
     def confirm_mobile_number(self):
         """
         POST 'yes' to confirm mobile number
@@ -270,7 +270,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
 class RequestNewCodePost(SequentialTaskSet):
 
     # All users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
         """
         GET Start page
@@ -279,7 +279,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacPost-Start', self, response, 200, Page.START)
 
-    @task(2)
+    @task
     def enter_postcode(self):
         """
         POST postcode
@@ -291,7 +291,7 @@ class RequestNewCodePost(SequentialTaskSet):
             verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
-    @task(3)
+    @task
     def select_address(self):
         """
         POST uprn and whole address extracted as JSON from the HTML in previous task
@@ -302,7 +302,7 @@ class RequestNewCodePost(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
 
-    @task(4)
+    @task
     def confirm_address(self):
         """
         POST 'yes' to confirm address
@@ -312,7 +312,7 @@ class RequestNewCodePost(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Post")
 
-    @task(5)
+    @task
     def select_method(self):
         """
         POST 'post' to select post as method of sending UACs
@@ -322,7 +322,7 @@ class RequestNewCodePost(SequentialTaskSet):
         }, catch_response=True) as response:
             verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME, "")
 
-    @task(6)
+    @task
     def enter_name(self):
         """
         POST 'John' as first name and 'Smith' as last name of person to send the UAC to
@@ -334,7 +334,7 @@ class RequestNewCodePost(SequentialTaskSet):
             verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
                             "John Smith<br>")
 
-    @task(7)
+    @task
     def confirm_name_address(self):
         """
         POST 'yes' to confirm name and address
@@ -377,16 +377,16 @@ class WebsiteUser(HttpUser):
     """
     
     tasks = {
-        LaunchEQ: 1,
+        LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 0,
-        RequestNewCodePost: 0,
+        RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
     
-    wait_time = between(2, 10)
-
+    #wait_time = between(2, 10)
+    wait_time = between(1, 1)
 
 """
 This function should be called after each page transition as it aims to aggressively check that:
