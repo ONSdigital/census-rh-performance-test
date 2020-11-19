@@ -67,8 +67,8 @@ class Page(Enum):
                     '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
                     'Continue')
     CODE_SENT = ('<title>We have sent an access code - Census 2021</title>',
-                 '',
-                 '')
+                 '<div class="panel__body svg-icon-margin--xl"',
+                 '</div>')
 
   
     def __init__(self, title, extract_start, extract_end):
@@ -264,7 +264,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-mobile/", {
             'request-mobile-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT)
+            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, "07714 330 933")
 
 
 class RequestNewCodePost(SequentialTaskSet):
