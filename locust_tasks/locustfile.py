@@ -220,7 +220,6 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST uprn and whole address extracted as JSON from the HTML in previous task
         """
-        logger.info("Address selected: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
@@ -251,6 +250,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST a mobile number
         """
+        #TODO use SampleGenerator to put random phone number in test data then use it here
+        #TODO also use part of the phone number in the varify_response (using the whole number caused failures)
         with self.client.post("/en/requests/access-code/enter-mobile/", {
             'request-mobile-number': '07714 330 933'
         }, catch_response=True) as response:
@@ -261,6 +262,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST 'yes' to confirm mobile number
         """
+        #TODO use SampleGenerator to put random phone number in test data then use it in the varify_response
         with self.client.post("/en/requests/access-code/confirm-mobile/", {
             'request-mobile-confirmation': 'yes'
         }, catch_response=True) as response:
@@ -296,7 +298,6 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         POST uprn and whole address extracted as JSON from the HTML in previous task
         """
-        logger.info("Address selected: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
@@ -328,6 +329,8 @@ class RequestNewCodePost(SequentialTaskSet):
         POST 'John' as first name and 'Smith' as last name of person to send the UAC to
         """
         with self.client.post("/en/requests/access-code/enter-name/", {
+            #TODO use SampleGenerator to put first name and surname in test data then use them here
+            #TODO also use them in the verify_response
             'name_first_name': 'John',
             'name_last_name': 'Smith'
         }, catch_response=True) as response:
@@ -339,6 +342,7 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         POST 'yes' to confirm name and address
         """
+        #TODO use SampleGenerator to put first name and surname in test data then use them in the varify_response
         with self.client.post("/en/requests/access-code/confirm-name-address/", {
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
@@ -380,8 +384,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 0,
-        RequestNewCodePost: 1,
+        RequestNewCodeSMS: 1,
+        RequestNewCodePost: 0,
         LaunchWebChat: 0
     }
     
