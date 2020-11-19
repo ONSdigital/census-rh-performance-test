@@ -321,7 +321,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-method/", {
             'form-select-method': 'post'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME, "")
+            verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME)
 
     @task
     def enter_name(self):
@@ -384,8 +384,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 1,
-        RequestNewCodePost: 0,
+        RequestNewCodeSMS: 0,
+        RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
     
