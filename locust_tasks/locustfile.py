@@ -250,23 +250,22 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST a mobile number
         """
-        #TODO use SampleGenerator to put random phone number in test data then use it here
-        #TODO also use part of the phone number in the varify_response (using the whole number caused failures)
+        self.phone_num = self.case["phone_number"]
+        #logger.info("Phone number: " + self.phone_num)
         with self.client.post("/en/requests/access-code/enter-mobile/", {
-            'request-mobile-number': '07714 330 933'
+            'request-mobile-number': self.phone_num
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, "933")
+            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num[-3:])
 
     @task
     def confirm_mobile_number(self):
         """
         POST 'yes' to confirm mobile number
         """
-        #TODO use SampleGenerator to put random phone number in test data then use it in the varify_response
         with self.client.post("/en/requests/access-code/confirm-mobile/", {
             'request-mobile-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, "07714 330 933")
+            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, self.phone_num)
 
 
 class RequestNewCodePost(SequentialTaskSet):
