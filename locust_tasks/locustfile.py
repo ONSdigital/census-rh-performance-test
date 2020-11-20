@@ -248,7 +248,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
     @task
     def enter_mobile_number(self):
         """
-        POST a mobile number
+        POST a phone number. Then use a section of the phone number (the last 3 digits) to verify the response.
         """
         self.phone_num = self.case["phone_number"]
         #logger.info("Phone number: " + self.phone_num)
@@ -328,10 +328,8 @@ class RequestNewCodePost(SequentialTaskSet):
         POST 'John' as first name and 'Smith' as last name of person to send the UAC to
         """
         self.whole_name = self.case["first_name"] + " " + self.case["last_name"]
-        logger.info("Name: " + self.whole_name)
+        #logger.info("Name: " + self.whole_name)
         with self.client.post("/en/requests/access-code/enter-name/", {
-            #TODO use SampleGenerator to put first name and surname in test data then use them here
-            #TODO also use them in the verify_response
             'name_first_name': self.case["first_name"],
             'name_last_name': self.case["last_name"]
         }, catch_response=True) as response:
@@ -343,7 +341,6 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         POST 'yes' to confirm name and address
         """
-        #TODO use SampleGenerator to put first name and surname in test data then use them in the varify_response
         with self.client.post("/en/requests/access-code/confirm-name-address/", {
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
@@ -385,7 +382,7 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 0,
+        RequestNewCodeSMS: 1,
         RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
@@ -487,7 +484,7 @@ def extractAddress(resp, uprn):
     page_extract2 = page_extract2.rstrip()
     address_to_select = page_extract2[7:-1]
     address_to_select = address_to_select.replace('&#34;', '"')
-    logger.info("Address extracted: " + address_to_select)
+    #logger.info("Address extracted: " + address_to_select)
 
     return address_to_select
 
