@@ -105,7 +105,7 @@ class LaunchEQ(SequentialTaskSet):
         POST a valid UAC
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
@@ -165,7 +165,7 @@ class LaunchEQwithAddressCorrection(SequentialTaskSet):
     @task(2)
     def enter_valid_uac(self):
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
 
     @task(3)
     def select_address_not_correct(self):
@@ -223,7 +223,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
 
     @task
     def confirm_address(self):
@@ -301,7 +301,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
 
     @task
     def confirm_address(self):
@@ -384,8 +384,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 0,
-        RequestNewCodePost: 1,
+        RequestNewCodeSMS: 1,
+        RequestNewCodePost: 0,
         LaunchWebChat: 0
     }
     
