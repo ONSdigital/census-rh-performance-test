@@ -327,14 +327,16 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         POST 'John' as first name and 'Smith' as last name of person to send the UAC to
         """
+        self.whole_name = self.case["first_name"] + " " + self.case["last_name"]
+        logger.info("Name: " + self.whole_name)
         with self.client.post("/en/requests/access-code/enter-name/", {
             #TODO use SampleGenerator to put first name and surname in test data then use them here
             #TODO also use them in the verify_response
-            'name_first_name': 'John',
-            'name_last_name': 'Smith'
+            'name_first_name': self.case["first_name"],
+            'name_last_name': self.case["last_name"]
         }, catch_response=True) as response:
             verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
-                            "John Smith<br>")
+                            self.whole_name + "<br>")
 
     @task
     def confirm_name_address(self):
@@ -345,7 +347,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-name-address/", {
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, "John Smith")
+            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, self.whole_name)
 
 
 class LaunchWebChat(SequentialTaskSet):
@@ -383,8 +385,8 @@ class WebsiteUser(HttpUser):
         LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        RequestNewCodeSMS: 1,
-        RequestNewCodePost: 0,
+        RequestNewCodeSMS: 0,
+        RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
     
