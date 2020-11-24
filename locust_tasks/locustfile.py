@@ -223,7 +223,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
     def confirm_address(self):
@@ -300,7 +300,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
+            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
     def confirm_address(self):
