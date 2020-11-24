@@ -220,6 +220,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         POST uprn and whole address extracted as JSON from the HTML in previous task
         """
+        #logger.info("Address: " + self.address_to_select)
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:

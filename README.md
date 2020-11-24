@@ -99,6 +99,7 @@ Before issuing an Kubertetes commands the following substitutions will be needed
 * TARGET\_HOST - This is the IP of the RH start page. It can be found in the browser by looking at the 'census-rh-performance' environment. Then 'Services & Ingress' -> ingress -> Load balancer IP. eg, 'http://http://34.107.206.101'
 * RABBITMQ\_CONNECTION - This is used if you want Locust to populate RH Firestore with test data, otherwise use 'nil'.
 * LOCUST\_WORKER\_NAME, INSTANCE\_NUM and MAX\_INSTANCES are all set by the generateWorkerManifests.sh script (see below, and in the scripts header for more details)
+NB. The script is found here: https://github.com/ONSdigital/census-int-utility/blob/master/scripts/generateWorkerManifests.sh
 
 To make sure that your test run is using the correct version of the Locust tests with your version of the 
 event_data you'll need to build and publish a docker image. To make sure that the correct image is deployed it
