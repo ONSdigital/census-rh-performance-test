@@ -388,8 +388,8 @@ class WebsiteUser(HttpUser):
         LaunchWebChat: 0
     }
     
-    #wait_time = between(2, 10)
-    wait_time = between(1, 1)
+    wait_time = between(2, 10)
+    #wait_time = between(1, 1)
 
 """
 This function should be called after each page transition as it aims to aggressively check that:
@@ -476,7 +476,7 @@ def identify_page(id, task, resp):
     report_failure(id, resp, task, failure_message, clean_text(page_content))
 
 """
-Returns the address that corresponds to the uprn. This can then be used to select the correct address from the page.
+Returns the html 'value' for a radio button of the target address i.e. the address that corresponds to the uprn parameter of this method.
 """
 def extractAddressRadioButtonValue(resp, uprn):
     page_content = resp.text
