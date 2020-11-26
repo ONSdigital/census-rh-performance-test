@@ -128,7 +128,7 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
     """
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def get_uac(self):
         """
         GET Start page
@@ -136,7 +136,7 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
-    @task(2)
+    @task
     def post_uac(self):
         """
         POST an invalid UAC
@@ -155,24 +155,24 @@ TODO Fix this class (it currently fails)
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
         self.case = get_next_case()
     
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
-    @task(2)
+    @task
     def enter_valid_uac(self):
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
             verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
 
-    @task(3)
+    @task
     def select_address_not_correct(self):
         with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False, catch_response=True) as response:
             verify_response('AddrCorrection-ConfirmAddr', self, response, 200, Page.ADDRESS_CORRECT)
 
-    @task(4)
+    @task
     def correct_address(self):
         response = self.client.post("/en/start/address-edit", {
             'address-line-1': '1 High Street',
@@ -211,7 +211,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            self.address_to_select = extractAddress(response, self.case["uprn"])
+            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
             verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
@@ -256,7 +256,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-mobile/", {
             'request-mobile-number': self.phone_num
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num[-3:])
+            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num)
 
     @task
     def confirm_mobile_number(self):
@@ -289,7 +289,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            self.address_to_select = extractAddress(response, self.case["uprn"])
+            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
             verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
 
@@ -326,16 +326,16 @@ class RequestNewCodePost(SequentialTaskSet):
     @task
     def enter_name(self):
         """
-        POST 'John' as first name and 'Smith' as last name of person to send the UAC to
+        POST first_name and last_name taken from event_data.txt
         """
-        self.whole_name = self.case["first_name"] + " " + self.case["last_name"]
-        #logger.info("Name: " + self.whole_name)
         with self.client.post("/en/requests/access-code/enter-name/", {
             'name_first_name': self.case["first_name"],
             'name_last_name': self.case["last_name"]
         }, catch_response=True) as response:
+            self.expected_name = self.case["first_name"] + " " + self.case["last_name"]
+            #logger.info("Name: " + self.expected_name)
             verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
-                            self.whole_name + "<br>")
+                            self.expected_name + "<br>")
 
     @task
     def confirm_name_address(self):
@@ -345,7 +345,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-name-address/", {
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, self.whole_name)
+            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, self.expected_name)
 
 
 class LaunchWebChat(SequentialTaskSet):
@@ -357,15 +357,15 @@ class LaunchWebChat(SequentialTaskSet):
         self.urls_on_current_page = self.toc_urls = None
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
         self.client.get("/en/start/")
 
-    @task(2)
+    @task
     def start_web_chat(self):
         self.client.get("/webchat")
 
-    @task(3)
+    @task
     def enter_web_chat_query(self):
         self.client.post("/webchat", {
             'screen_name': 'Fred Smith',
@@ -478,7 +478,7 @@ def identify_page(id, task, resp):
 """
 Returns the address that corresponds to the uprn. This can then be used to select the correct address from the page.
 """
-def extractAddress(resp, uprn):
+def extractAddressRadioButtonValue(resp, uprn):
     page_content = resp.text
     page_extract1 = page_content[page_content.index('id="' + uprn + '"'):]
     page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
