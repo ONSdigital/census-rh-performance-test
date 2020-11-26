@@ -2,9 +2,12 @@
 
 *~
 .project
+.DS_Store
+.idea/
+env/
 
 # Prevent people accidently committing large test data files
-test_data/event_data.txt
+test_data/*.txt
 
 ### Python ###
 __pycache__

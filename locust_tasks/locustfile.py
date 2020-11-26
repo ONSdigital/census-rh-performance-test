@@ -48,6 +48,27 @@ class Page(Enum):
                        '',
                        ''
                       )
+    SELECT_ADDRESS = ('<title>Select your address - Census 2021</title>',
+                      '<h1 class="question__title">Select your address</h1>',
+                      'I cannot find my address')
+    SELECT_METHOD = ('<title>How would you like to receive a new access code? - Census 2021</title>',
+                     '<h1 class="question__title">How would you like to receive a new household access code?</h1>',
+                     'To request a census in a different format or for further help, please')
+    ENTER_MOBILE = ('<title>What is your mobile phone number? - Census 2021</title>',
+                    '<h1 class="question__title">What is your mobile phone number?</h1>',
+                    'Continue')
+    CONFIRM_MOBILE = ('<title>Is this mobile phone number correct? - Census 2021</title>',
+                      '<h1 class="question__title">Is this mobile phone number correct?</h1>',
+                      'Continue')
+    ENTER_NAME = ('<title>What is your name? - Census 2021</title>',
+                  '<h1 class="question__title">What is your name?</h1>',
+                  'Continue')
+    CONFIRM_NAME = ('<title>Do you want to send a new access code to this address? - Census 2021</title>',
+                    '<h1 class="question__title">Do you want to send a new household access code to this address?</h1>',
+                    'Continue')
+    CODE_SENT = ('<title>We have sent an access code - Census 2021</title>',
+                 '<div class="panel__body svg-icon-margin--xl"',
+                 '</div>')
 
   
     def __init__(self, title, extract_start, extract_end):
@@ -84,7 +105,7 @@ class LaunchEQ(SequentialTaskSet):
         POST a valid UAC
         """
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
             verify_response('Launch-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
@@ -99,6 +120,7 @@ class LaunchEQ(SequentialTaskSet):
 """
 This sequence simulates a user who mistypes their UAC.
 The incorrect UAC is 16 characters long so it will still trigger the call to RHSvc.
+TODO Fix this class (it currently fails)
 """
 class LaunchEQInvalidUAC(SequentialTaskSet):
     """
@@ -106,7 +128,7 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
     """
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def get_uac(self):
         """
         GET Start page
@@ -114,7 +136,7 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
-    @task(2)
+    @task
     def post_uac(self):
         """
         POST an invalid UAC
@@ -128,28 +150,29 @@ This task sequence simulates a user launching EQ with a corrected address.
 This is virtually the same as 'launch_EQ' except that after entering a UAC
 the user says that their address is not correct and enters a corrected address.
 The address correction exercises different backend code. 
+TODO Fix this class (it currently fails)
 """    
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
         self.case = get_next_case()
     
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
-    @task(2)
+    @task
     def enter_valid_uac(self):
         with self.client.post("/en/start/", {"uac": self.case['uac']}, catch_response=True) as response:
-            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["addressLine1"])
+            verify_response('AddrCorrection-EnterUAC', self, response, 200, Page.ADDRESS_CORRECT, self.case["address_line_1"])
 
-    @task(3)
+    @task
     def select_address_not_correct(self):
         with self.client.post("/en/start/confirm-address/", {'address-check-answer': 'no'}, allow_redirects=False, catch_response=True) as response:
             verify_response('AddrCorrection-ConfirmAddr', self, response, 200, Page.ADDRESS_CORRECT)
 
-    @task(4)
+    @task
     def correct_address(self):
         response = self.client.post("/en/start/address-edit", {
             'address-line-1': '1 High Street',
@@ -166,49 +189,166 @@ This task sequence simulates a user following the 'request a new code' sequence 
 The simulated user steps through the pages one by one. They don't go down any of the 
 correction/error paths as this doesn't trigger any significant server side work.
 """
-class request_new_code(SequentialTaskSet):
+class RequestNewCodeSMS(SequentialTaskSet):
+    """
+    Class to represent a user requesting a new UAC, which is to be sent by SMS.
+    """
+
+    @task
+    def start_page(self):
+        """
+        GET Start page
+        """
+        self.case = get_next_case()
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('RequestUacSms-Start', self, response, 200, Page.START)
+        
+    @task
+    def enter_postcode(self):
+        """
+        POST postcode
+        """
+        with self.client.post("/en/requests/access-code/enter-address/", {
+            'form-enter-address-postcode': self.case['postcode']
+        }, catch_response=True) as response:
+            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
+            verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+                            self.case["postcode"])
+
+    @task
+    def select_address(self):
+        """
+        POST uprn and whole address extracted as JSON from the HTML in previous task
+        """
+        #logger.info("Address: " + self.address_to_select)
+        with self.client.post("/en/requests/access-code/select-address/", {
+            'form-select-address': self.address_to_select
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
+
+    @task
+    def confirm_address(self):
+        """
+        POST 'yes' to confirm address
+        """
+        with self.client.post("/en/requests/access-code/confirm-address/", {
+            'form-confirm-address': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
+
+    @task
+    def select_method(self):
+        """
+        POST 'sms' to select text message as method of sending UACs
+        """
+        with self.client.post("/en/requests/access-code/select-method/", {
+            'form-select-method': 'sms'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE)
+
+    @task
+    def enter_mobile_number(self):
+        """
+        POST a phone number. Then use a section of the phone number (the last 3 digits) to verify the response.
+        """
+        self.phone_num = self.case["phone_number"]
+        #logger.info("Phone number: " + self.phone_num)
+        with self.client.post("/en/requests/access-code/enter-mobile/", {
+            'request-mobile-number': self.phone_num
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num)
+
+    @task
+    def confirm_mobile_number(self):
+        """
+        POST 'yes' to confirm mobile number
+        """
+        with self.client.post("/en/requests/access-code/confirm-mobile/", {
+            'request-mobile-confirmation': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, self.phone_num)
+
+
+class RequestNewCodePost(SequentialTaskSet):
 
     # All users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
-        self.client.get("/en/start/")
-        
-    @task(2)
-    def request_new_access_code(self):
-        self.client.get("/request-access-code")
+        """
+        GET Start page
+        """
+        self.case = get_next_case()
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('RequestUacPost-Start', self, response, 200, Page.START)
 
-    @task(3)
+    @task
+    def enter_postcode(self):
+        """
+        POST postcode
+        """
+        with self.client.post("/en/requests/access-code/enter-address/", {
+            'form-enter-address-postcode': self.case['postcode']
+        }, catch_response=True) as response:
+            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
+            verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+                            self.case["postcode"])
+
+    @task
     def select_address(self):
-        # This code should arguable select one of the available addresses but running 
-        # with a fixed address doesn't seem to affect the success of the test
-        self.client.post("/request-access-code/select-address", {
-            'request-address-select': "{'uprn': '10023122452', 'address': hardcoded_address}"
-        })
+        """
+        POST uprn and whole address extracted as JSON from the HTML in previous task
+        """
+        with self.client.post("/en/requests/access-code/select-address/", {
+            'form-select-address': self.address_to_select
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
-    @task(4)
+    @task
     def confirm_address(self):
-        self.client.post("/request-access-code/confirm-address", {
-            'request-address-confirmation': 'yes'
-        })
+        """
+        POST 'yes' to confirm address
+        """
+        with self.client.post("/en/requests/access-code/confirm-address/", {
+            'form-confirm-address': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Post")
 
-    @task(5)
-    def enter_mobile_number(self):
-        self.client.post("/request-access-code/enter-mobile", {
-            'request-mobile-number': '07714 330 933'
-        })
+    @task
+    def select_method(self):
+        """
+        POST 'post' to select post as method of sending UACs
+        """
+        with self.client.post("/en/requests/access-code/select-method/", {
+            'form-select-method': 'post'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME)
 
-    @task(6)
-    def confirm_mobile_number(self):
-        self.client.post("/request-access-code/confirm-mobile", {
-            'request-mobile-confirmation': 'yes'
-        })
+    @task
+    def enter_name(self):
+        """
+        POST first_name and last_name taken from event_data.txt
+        """
+        with self.client.post("/en/requests/access-code/enter-name/", {
+            'name_first_name': self.case["first_name"],
+            'name_last_name': self.case["last_name"]
+        }, catch_response=True) as response:
+            self.expected_name = self.case["first_name"] + " " + self.case["last_name"]
+            #logger.info("Name: " + self.expected_name)
+            verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
+                            self.expected_name + "<br>")
 
-    @task(7)
-    def start_for_new_uac(self):
-        self.client.get("/en/start/")
+    @task
+    def confirm_name_address(self):
+        """
+        POST 'yes' to confirm name and address
+        """
+        with self.client.post("/en/requests/access-code/confirm-name-address/", {
+            'request-name-address-confirmation': 'yes'
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, self.expected_name)
 
 
-class launch_web_chat(SequentialTaskSet):
+class LaunchWebChat(SequentialTaskSet):
     """
     This task sequence simulates a user launching web chat.
     """
@@ -217,15 +357,15 @@ class launch_web_chat(SequentialTaskSet):
         self.urls_on_current_page = self.toc_urls = None
 
     # assume all users arrive at the start page
-    @task(1)
+    @task
     def start_page(self):
         self.client.get("/en/start/")
 
-    @task(2)
+    @task
     def start_web_chat(self):
         self.client.get("/webchat")
 
-    @task(3)
+    @task
     def enter_web_chat_query(self):
         self.client.post("/webchat", {
             'screen_name': 'Fred Smith',
@@ -237,19 +377,19 @@ class launch_web_chat(SequentialTaskSet):
 class WebsiteUser(HttpUser):
     """
     This class controls the balance of the tasks which simulated users are performing.
-    TODO: Adjust to a more representative balance. (Currently set for development)
     """
     
     tasks = {
-        LaunchEQ: 100,
+        LaunchEQ: 0,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
-        request_new_code: 0,
-        launch_web_chat: 0
+        RequestNewCodeSMS: 1,
+        RequestNewCodePost: 1,
+        LaunchWebChat: 0
     }
     
     wait_time = between(2, 10)
-
+    #wait_time = between(1, 1)
 
 """
 This function should be called after each page transition as it aims to aggressively check that:
@@ -334,7 +474,21 @@ def identify_page(id, task, resp):
     # Identification failed
     failure_message = f'Failed to identify page. Status={resp.status_code}.'
     report_failure(id, resp, task, failure_message, clean_text(page_content))
-    
+
+"""
+Returns the html 'value' for a radio button of the target address i.e. the address that corresponds to the uprn parameter of this method.
+"""
+def extractAddressRadioButtonValue(resp, uprn):
+    page_content = resp.text
+    page_extract1 = page_content[page_content.index('id="' + uprn + '"'):]
+    page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
+    page_extract2 = page_extract2.rstrip()
+    address_to_select = page_extract2[7:-1]
+    address_to_select = address_to_select.replace('&#34;', '"')
+    #logger.info("Address extracted: " + address_to_select)
+
+    return address_to_select
+
 """
 Returns the key content for the current page.
 If the enum data for the current_page doesn't have start and end markers set then
