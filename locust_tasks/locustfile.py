@@ -36,6 +36,10 @@ class Page(Enum):
                        '',
                        ''
                       )
+    CALL_CONTACT_CENTRE = ('<title>Call Census Customer Contact Centre - Census 2021</title>',
+                       '<main',
+                       '</main>'
+                      )
     ERROR           = ('<title>Error - Census 2021</title>',
                        'id="main-content"',
                        '<footer'
@@ -225,10 +229,11 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-3-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+            id = 'RequestUacSms-3-EnterAddress'
+            verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
-            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
-
+            self.address_to_select = extractAddressRadioButtonValue(id, self, response, self.case["uprn"])
+            
     @task
     def select_address(self):
         """
@@ -322,9 +327,10 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-3-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+            id = 'RequestUacPost-3-EnterAddress'
+            verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
-            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
+            self.address_to_select = extractAddressRadioButtonValue(id, self, response, self.case["uprn"])
 
     @task
     def select_address(self):
@@ -424,7 +430,7 @@ class WebsiteUser(HttpUser):
     """
     
     tasks = {
-        LaunchEQ: 0,
+        LaunchEQ: 1,
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 1,
@@ -433,8 +439,8 @@ class WebsiteUser(HttpUser):
     }
     
     wait_time = between(2, 10)
-    #wait_time = between(1, 1)
-
+    
+    
 """
 This function should be called after each page transition as it aims to aggressively check that:
   - The current page is the expected page.
@@ -522,9 +528,33 @@ def identify_page(id, task, resp):
 """
 Returns the html 'value' for a radio button of the target address i.e. the address that corresponds to the uprn parameter of this method.
 """
-def extractAddressRadioButtonValue(resp, uprn):
+def extractAddressRadioButtonValue(id, task, resp, uprn):
     page_content = resp.text
-    page_extract1 = page_content[page_content.index('id="' + uprn + '"'):]
+    
+    # Firstly check to see if the uprn is on the page
+    target_id_string = 'id="' + uprn + '"'
+    if target_id_string not in page_content:
+        # UPRN is not on page.
+        # This may be because RHUI lists only the first 100 results. So may be working correctly.
+        # Find out how many results have been listed.
+        num_addresses_search = re.search('([0-9]*) addresses found for postcode', page_content, re.IGNORECASE)
+        if not num_addresses_search:
+            error_message = 'Failed to extract number of addresses found.'
+            report_failure(id, resp, task, error_message, clean_text(resp.text))
+        
+        # Fail if the address should have been on the results page, but isn't.
+        # ie, the number of results is not high enough that we would expect RHUI to only list a subset.
+        num_addresses = int(num_addresses_search.group(1))
+        if num_addresses < 100:
+            error_message = 'RHUI failed to list address for uprn: ' + uprn + '.'
+            report_failure(id, resp, task, error_message, clean_text(resp.text))
+
+        # Abort the task_set for this UPRN. 
+        # It's unlucky enough to be for a postcode with more than 100 addresses
+        task.interrupt()
+            
+    # Page content includes the uprn, so extract its radio button id
+    page_extract1 = page_content[page_content.index(target_id_string):]
     page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
     page_extract2 = page_extract2.rstrip()
     address_to_select = page_extract2[7:-1]
