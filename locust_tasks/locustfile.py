@@ -109,6 +109,7 @@ class LaunchEQ(SequentialTaskSet):
         GET Start page
         """
         self.case = get_next_case()
+        self.on_failure_detail = "UAC='" + self.case['uac']
 
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
@@ -147,6 +148,8 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
         """
         GET Start page
         """
+        self.on_failure_detail = ""
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
@@ -172,6 +175,7 @@ class LaunchEQwithAddressCorrection(SequentialTaskSet):
     @task
     def start_page(self):
         self.case = get_next_case()
+        self.on_failure_detail = "UAC='" + self.case['uac']
     
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
@@ -214,6 +218,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
         GET Start page
         """
         self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "' UPRN=" + self.case['uprn']
+        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-1-Start', self, response, 200, Page.START)
         
@@ -312,6 +318,8 @@ class RequestNewCodePost(SequentialTaskSet):
         GET Start page
         """
         self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "' UPRN=" + self.case['uprn']
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacPost-1-Start', self, response, 200, Page.START)
 
@@ -409,6 +417,7 @@ class LaunchWebChat(SequentialTaskSet):
 
     def on_start(self):
         self.urls_on_current_page = self.toc_urls = None
+        self.on_failure_detail = ""
 
     # assume all users arrive at the start page
     @task
@@ -504,8 +513,8 @@ def report_failure(id, resp, task, failure_message, page_content):
     if page_content:
         error_detail = f' Page content >>> {page_content} <<<'
 
-    resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
-    logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
+    resp.failure(f'ID={id} {task.on_failure_detail} Status={resp.status_code}: {failure_message}')
+    logger.error(f'ID={id} {task.on_failure_detail} Status={resp.status_code}: {failure_message}{error_detail}')
     
     # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
     # Note that this sleep does not affect the progress of other tasks
