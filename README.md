@@ -165,6 +165,24 @@ To run in the browser firstly start Locust and then point the browser at the Loc
 	$ locust -f locust_tasks/locustfile.py --host http://localhost:9092
 
 
+### Monitoring and recording RH performance
+
+For a given number of simulated users you should record the number of times per
+second that Locust executes each task. 
+There a 2 ways to do this. The simplest is to record the 'current RPS' for the
+final step of the task. A more accurate method is to compare 2 screenshots (with
+current time displayed) taken a minute or two apart and calculate the requests-per-second
+from the '# Requests' data.
+
+The final URL for each of the current tasks are:
+
+       Task               op         URL
+    --------------------+----+------------------------------------------------
+     Launch EQ           POST  /en/start/confirm-address/
+     Fulfilment by SMS   POST  /en/requests/access-code/confirm-mobile/
+     Fulfilment by post  POST  /en/requests/access-code/confirm-name-address/
+
+
 ### Comments about performance run of RH in GCP
 
 I've found running, say, 5% of traffic locally a good way to differentiate between genuine errors and spurious errors which are sometimes reported by the GCP Locust. See above for notes on running headless Locust locally.
