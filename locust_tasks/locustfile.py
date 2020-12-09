@@ -44,6 +44,10 @@ class Page(Enum):
                        'id="main-content"',
                        '<footer'
                       )
+    ERROR_403       = ('<title>403</title>',
+                       '',
+                       ''
+                      )
     ERROR_502       = ('<title>502 Server Error</title>',
                        '',
                        ''
