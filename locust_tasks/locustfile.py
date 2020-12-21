@@ -4,7 +4,7 @@ import re
 import logging
 import time
 from enum import Enum
-from locust import HttpUser, TaskSet, between, SequentialTaskSet, task, events
+from locust import HttpUser, between, SequentialTaskSet, task, events
 from locust.runners import MasterRunner
 
 sys.path.append(os.getcwd())
@@ -102,16 +102,17 @@ class LaunchEQ(SequentialTaskSet):
     Class to represent a user entering a UAC and launching EQ.
     """
 
+    def on_start(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "UAC='" + self.case['uac']
+        self.on_failure_logging = ""
+
     # assume all users arrive at the start page
     @task
     def get_uac(self):
         """
         GET Start page
         """
-        self.case = get_next_case()
-        self.on_failure_detail = "UAC='" + self.case['uac']
-        self.on_failure_logging = ""
-
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
@@ -143,15 +144,16 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
     Class to represent a user who enters an incorrect UAC.
     """
 
+    def on_start(self):
+        self.on_failure_detail = ""
+        self.on_failure_logging = ""
+
     # assume all users arrive at the start page
     @task
     def get_uac(self):
         """
         GET Start page
         """
-        self.on_failure_detail = ""
-        self.on_failure_logging = ""
-
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
@@ -173,13 +175,14 @@ TODO Fix this class (it currently fails)
 """    
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
-    # assume all users arrive at the start page
-    @task
-    def start_page(self):
+    def on_start(self):
         self.case = get_next_case()
         self.on_failure_detail = "UAC='" + self.case['uac']
         self.on_failure_logging = ""
-    
+
+    # assume all users arrive at the start page
+    @task
+    def start_page(self):
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
@@ -214,16 +217,17 @@ class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
+    
+    def on_start(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
+        self.on_failure_logging = "UPRN=" + self.case['uprn']
 
     @task
     def start_page(self):
         """
         GET Start page
         """
-        self.case = get_next_case()
-        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
-        self.on_failure_logging = "UPRN=" + self.case['uprn']
-        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-1-Start', self, response, 200, Page.START)
         
@@ -246,7 +250,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
             id = 'RequestUacSms-3-EnterAddress'
             verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
-            self.address_to_select = extractAddressRadioButtonValue(id, self, response, self.case["uprn"])
+            self.address_to_select = extract_address_radio_button_value(id, self, response, self.case["uprn"])
             
     @task
     def select_address(self):
@@ -315,16 +319,17 @@ class RequestNewCodeSMS(SequentialTaskSet):
 
 class RequestNewCodePost(SequentialTaskSet):
 
+    def on_start(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
+        self.on_failure_logging = "UPRN=" + self.case['uprn']
+
     # All users arrive at the start page
     @task
     def start_page(self):
         """
         GET Start page
         """
-        self.case = get_next_case()
-        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
-        self.on_failure_logging = "UPRN=" + self.case['uprn']
-
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacPost-1-Start', self, response, 200, Page.START)
 
@@ -347,7 +352,7 @@ class RequestNewCodePost(SequentialTaskSet):
             id = 'RequestUacPost-3-EnterAddress'
             verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
-            self.address_to_select = extractAddressRadioButtonValue(id, self, response, self.case["uprn"])
+            self.address_to_select = extract_address_radio_button_value(id, self, response, self.case["uprn"])
 
     @task
     def select_address(self):
@@ -377,7 +382,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/household-information/", {
            'form-confirm-address': 'yes' 
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-6-Household', self, response, 200, Page.SELECT_METHOD)
+            verify_response('RequestUacPost-6-Household', self, response, 200, Page.SELECT_METHOD)
 
     @task
     def select_method(self):
@@ -547,7 +552,7 @@ def identify_page(id, task, resp):
 """
 Returns the html 'value' for a radio button of the target address i.e. the address that corresponds to the uprn parameter of this method.
 """
-def extractAddressRadioButtonValue(id, task, resp, uprn):
+def extract_address_radio_button_value(id, task, resp, uprn):
     page_content = resp.text
     
     # Firstly check to see if the uprn is on the page
