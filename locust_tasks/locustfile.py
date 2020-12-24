@@ -102,7 +102,7 @@ class LaunchEQ(SequentialTaskSet):
     Class to represent a user entering a UAC and launching EQ.
     """
 
-    def on_start(self):
+    def init_thread(self):
         self.case = get_next_case()
         self.on_failure_detail = "UAC='" + self.case['uac']
         self.on_failure_logging = ""
@@ -113,6 +113,8 @@ class LaunchEQ(SequentialTaskSet):
         """
         GET Start page
         """
+        self.init_thread()
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
 
@@ -144,7 +146,7 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
     Class to represent a user who enters an incorrect UAC.
     """
 
-    def on_start(self):
+    def init_thread(self):
         self.on_failure_detail = ""
         self.on_failure_logging = ""
 
@@ -154,6 +156,8 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
         """
         GET Start page
         """
+        self.init_thread()
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
@@ -175,7 +179,7 @@ TODO Fix this class (it currently fails)
 """    
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
-    def on_start(self):
+    def init_thread(self):
         self.case = get_next_case()
         self.on_failure_detail = "UAC='" + self.case['uac']
         self.on_failure_logging = ""
@@ -183,6 +187,8 @@ class LaunchEQwithAddressCorrection(SequentialTaskSet):
     # assume all users arrive at the start page
     @task
     def start_page(self):
+        self.init_thread(self)
+        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
@@ -217,8 +223,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
     """
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
-    
-    def on_start(self):
+
+    def init_thread(self):
         self.case = get_next_case()
         self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
         self.on_failure_logging = "UPRN=" + self.case['uprn']
@@ -228,6 +234,8 @@ class RequestNewCodeSMS(SequentialTaskSet):
         """
         GET Start page
         """
+        self.init_thread()
+        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacSms-1-Start', self, response, 200, Page.START)
         
@@ -319,7 +327,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
 
 class RequestNewCodePost(SequentialTaskSet):
 
-    def on_start(self):
+    def init_thread(self):
         self.case = get_next_case()
         self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
         self.on_failure_logging = "UPRN=" + self.case['uprn']
@@ -330,6 +338,8 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         GET Start page
         """
+        self.init_thread()
+        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('RequestUacPost-1-Start', self, response, 200, Page.START)
 
@@ -425,7 +435,7 @@ class LaunchWebChat(SequentialTaskSet):
     This task sequence simulates a user launching web chat.
     """
 
-    def on_start(self):
+    def init_thread(self):
         self.urls_on_current_page = self.toc_urls = None
         self.on_failure_detail = ""
         self.on_failure_logging = ""
@@ -433,6 +443,8 @@ class LaunchWebChat(SequentialTaskSet):
     # assume all users arrive at the start page
     @task
     def start_page(self):
+        self.init_thread()
+    
         self.client.get("/en/start/")
 
     @task
@@ -458,7 +470,7 @@ class WebsiteUser(HttpUser):
         LaunchEQInvalidUAC: 0,
         LaunchEQwithAddressCorrection: 0,
         RequestNewCodeSMS: 1,
-        RequestNewCodePost: 0,
+        RequestNewCodePost: 1,
         LaunchWebChat: 0
     }
     
