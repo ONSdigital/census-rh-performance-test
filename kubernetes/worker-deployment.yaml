@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: [LOCUST_WORKER_NAME]
-          image: eu.gcr.io/census-rh-loadgen/locust-tasks:CR-899_PMB_With_master_and_slave
+          image: gcr.io/[PROJECT_ID]/locust-tasks
           imagePullPolicy: Always
           resources:
             limits:
@@ -31,7 +31,7 @@ spec:
             - name: LOCUST_MASTER
               value: locust-master
             - name: TARGET_HOST
-              value: https://performance-rh.int.census-gcp.onsdigital.uk
+              value: [TARGET_HOST]
             - name: RABBITMQ_URL
             - name: INSTANCE_NUM
               value: "[INSTANCE_NUM]"
