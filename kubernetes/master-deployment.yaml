@@ -31,6 +31,7 @@ spec:
             - name: TARGET_HOST
               value: [TARGET_HOST]
             - name: RABBITMQ_URL
+              value: [RABBITMQ_CONNECTION]
           ports:
             - name: loc-master-web
               containerPort: 8089
