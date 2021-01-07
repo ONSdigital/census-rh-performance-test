@@ -4,7 +4,7 @@ import re
 import logging
 import time
 from enum import Enum
-from locust import HttpUser, TaskSet, between, SequentialTaskSet, task, events
+from locust import HttpUser, between, SequentialTaskSet, task, events
 from locust.runners import MasterRunner
 
 sys.path.append(os.getcwd())
@@ -36,9 +36,17 @@ class Page(Enum):
                        '',
                        ''
                       )
+    CALL_CONTACT_CENTRE = ('<title>Call Census Customer Contact Centre - Census 2021</title>',
+                       '<main',
+                       '</main>'
+                      )
     ERROR           = ('<title>Error - Census 2021</title>',
                        'id="main-content"',
                        '<footer'
+                      )
+    ERROR_403       = ('<title>403</title>',
+                       '',
+                       ''
                       )
     ERROR_502       = ('<title>502 Server Error</title>',
                        '',
@@ -48,6 +56,9 @@ class Page(Enum):
                        '',
                        ''
                       )
+    ENTER_ADDRESS = ('>What is your postcode?</h1>',
+                       '<h1',
+                       '</h1>')
     SELECT_ADDRESS = ('<title>Select your address - Census 2021</title>',
                       '<h1 class="question__title">Select your address</h1>',
                       'I cannot find my address')
@@ -57,6 +68,9 @@ class Page(Enum):
     ENTER_MOBILE = ('<title>What is your mobile phone number? - Census 2021</title>',
                     '<h1 class="question__title">What is your mobile phone number?</h1>',
                     'Continue')
+    HOUSEHOLD_INFORMATION = ('<title>Request a new household access code - Census 2021</title>',
+                       '<main',
+                       '<p>')
     CONFIRM_MOBILE = ('<title>Is this mobile phone number correct? - Census 2021</title>',
                       '<h1 class="question__title">Is this mobile phone number correct?</h1>',
                       'Continue')
@@ -88,13 +102,18 @@ class LaunchEQ(SequentialTaskSet):
     Class to represent a user entering a UAC and launching EQ.
     """
 
+    def init_thread(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "UAC='" + self.case['uac']
+        self.on_failure_logging = ""
+
     # assume all users arrive at the start page
     @task
     def get_uac(self):
         """
         GET Start page
         """
-        self.case = get_next_case()
+        self.init_thread()
 
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('Launch-Start', self, response, 200, Page.START)
@@ -127,12 +146,18 @@ class LaunchEQInvalidUAC(SequentialTaskSet):
     Class to represent a user who enters an incorrect UAC.
     """
 
+    def init_thread(self):
+        self.on_failure_detail = ""
+        self.on_failure_logging = ""
+
     # assume all users arrive at the start page
     @task
     def get_uac(self):
         """
         GET Start page
         """
+        self.init_thread()
+
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('InvalidUAC-Start', self, response, 200, Page.START)
 
@@ -154,11 +179,16 @@ TODO Fix this class (it currently fails)
 """    
 class LaunchEQwithAddressCorrection(SequentialTaskSet):
 
+    def init_thread(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "UAC='" + self.case['uac']
+        self.on_failure_logging = ""
+
     # assume all users arrive at the start page
     @task
     def start_page(self):
-        self.case = get_next_case()
-    
+        self.init_thread(self)
+        
         with self.client.get('/en/start/', catch_response=True) as response:
             verify_response('AddrCorrection-Start', self, response, 200, Page.START)
 
@@ -194,15 +224,29 @@ class RequestNewCodeSMS(SequentialTaskSet):
     Class to represent a user requesting a new UAC, which is to be sent by SMS.
     """
 
+    def init_thread(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
+        self.on_failure_logging = "UPRN=" + self.case['uprn']
+
     @task
     def start_page(self):
         """
         GET Start page
         """
-        self.case = get_next_case()
-        with self.client.get('/en/start/', catch_response=True) as response:
-            verify_response('RequestUacSms-Start', self, response, 200, Page.START)
+        self.init_thread()
         
+        with self.client.get('/en/start/', catch_response=True) as response:
+            verify_response('RequestUacSms-1-Start', self, response, 200, Page.START)
+        
+    @task
+    def request_new_access_code(self):
+        """
+        Click on link to 'request a new access code'
+        """
+        with self.client.get("/en/requests/access-code/enter-address/", catch_response=True) as response:
+            verify_response('RequestUacSms-2-EnterAddress', self, response, 200, Page.ENTER_ADDRESS)
+
     @task
     def enter_postcode(self):
         """
@@ -211,10 +255,11 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
-            verify_response('RequestUacSms-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+            id = 'RequestUacSms-3-EnterAddress'
+            verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
-
+            self.address_to_select = extract_address_radio_button_value(id, self, response, self.case["uprn"])
+            
     @task
     def select_address(self):
         """
@@ -224,7 +269,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
+            verify_response('RequestUacSms-4-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
     def confirm_address(self):
@@ -234,7 +279,17 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-address/", {
             'form-confirm-address': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Text message")
+            verify_response('RequestUacSms-5-ConfirmAddress', self, response, 200, Page.HOUSEHOLD_INFORMATION)
+
+    @task
+    def request_new_household_access_code(self):
+        """
+        POST 'Continue' to confirm the request of a new household access code
+        """
+        with self.client.post("/en/requests/access-code/household-information/", {
+           'form-confirm-address': 'yes' 
+        }, catch_response=True) as response:
+            verify_response('RequestUacSms-6-Household', self, response, 200, Page.SELECT_METHOD)
 
     @task
     def select_method(self):
@@ -244,7 +299,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-method/", {
             'form-select-method': 'sms'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-SelectMethod', self, response, 200, Page.ENTER_MOBILE)
+            verify_response('RequestUacSms-7-SelectMethod', self, response, 200, Page.ENTER_MOBILE)
 
     @task
     def enter_mobile_number(self):
@@ -256,7 +311,7 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-mobile/", {
             'request-mobile-number': self.phone_num
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num)
+            verify_response('RequestUacSms-8-EnterMobileNumber', self, response, 200, Page.CONFIRM_MOBILE, self.phone_num)
 
     @task
     def confirm_mobile_number(self):
@@ -266,10 +321,16 @@ class RequestNewCodeSMS(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-mobile/", {
             'request-mobile-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacSms-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, self.phone_num)
+            expected_text = "sent a text to " + self.phone_num
+            verify_response('RequestUacSms-9-ConfirmMobileNumber', self, response, 200, Page.CODE_SENT, expected_text)
 
 
 class RequestNewCodePost(SequentialTaskSet):
+
+    def init_thread(self):
+        self.case = get_next_case()
+        self.on_failure_detail = "Postcode='" + self.case['postcode'] + "'"
+        self.on_failure_logging = "UPRN=" + self.case['uprn']
 
     # All users arrive at the start page
     @task
@@ -277,9 +338,18 @@ class RequestNewCodePost(SequentialTaskSet):
         """
         GET Start page
         """
-        self.case = get_next_case()
+        self.init_thread()
+        
         with self.client.get('/en/start/', catch_response=True) as response:
-            verify_response('RequestUacPost-Start', self, response, 200, Page.START)
+            verify_response('RequestUacPost-1-Start', self, response, 200, Page.START)
+
+    @task
+    def request_new_access_code(self):
+        """
+        Click on link to 'request a new access code'
+        """
+        with self.client.get("/en/requests/access-code/enter-address/", catch_response=True) as response:
+            verify_response('RequestUacPost-2-NewCode', self, response, 200, Page.ENTER_ADDRESS)
 
     @task
     def enter_postcode(self):
@@ -289,9 +359,10 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/enter-address/", {
             'form-enter-address-postcode': self.case['postcode']
         }, catch_response=True) as response:
-            self.address_to_select = extractAddressRadioButtonValue(response, self.case["uprn"])
-            verify_response('RequestUacPost-EnterAddress', self, response, 200, Page.SELECT_ADDRESS,
+            id = 'RequestUacPost-3-EnterAddress'
+            verify_response(id, self, response, 200, Page.SELECT_ADDRESS,
                             self.case["postcode"])
+            self.address_to_select = extract_address_radio_button_value(id, self, response, self.case["uprn"])
 
     @task
     def select_address(self):
@@ -301,7 +372,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-address/", {
             'form-select-address': self.address_to_select
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
+            verify_response('RequestUacPost-4-SelectAddress', self, response, 200, Page.ADDRESS_CORRECT, self.case["postcode"])
 
     @task
     def confirm_address(self):
@@ -311,7 +382,17 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-address/", {
             'form-confirm-address': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-ConfirmAddress', self, response, 200, Page.SELECT_METHOD, "Post")
+            verify_response('RequestUacPost-5-ConfirmAddress', self, response, 200, Page.HOUSEHOLD_INFORMATION)
+
+    @task
+    def request_new_household_access_code(self):
+        """
+        POST 'Continue' to confirm the request of a new household access code
+        """
+        with self.client.post("/en/requests/access-code/household-information/", {
+           'form-confirm-address': 'yes' 
+        }, catch_response=True) as response:
+            verify_response('RequestUacPost-6-Household', self, response, 200, Page.SELECT_METHOD)
 
     @task
     def select_method(self):
@@ -321,7 +402,7 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/select-method/", {
             'form-select-method': 'post'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-SelectMethod', self, response, 200, Page.ENTER_NAME)
+            verify_response('RequestUacPost-7-SelectMethod', self, response, 200, Page.ENTER_NAME)
 
     @task
     def enter_name(self):
@@ -332,10 +413,9 @@ class RequestNewCodePost(SequentialTaskSet):
             'name_first_name': self.case["first_name"],
             'name_last_name': self.case["last_name"]
         }, catch_response=True) as response:
-            self.expected_name = self.case["first_name"] + " " + self.case["last_name"]
-            #logger.info("Name: " + self.expected_name)
-            verify_response('RequestUacPost-EnterName', self, response, 200, Page.CONFIRM_NAME,
-                            self.expected_name + "<br>")
+            expected_name = self.case["first_name"] + " " + self.case["last_name"]
+            verify_response('RequestUacPost-8-EnterName', self, response, 200, Page.CONFIRM_NAME,
+                            expected_name + "<br>")
 
     @task
     def confirm_name_address(self):
@@ -345,7 +425,9 @@ class RequestNewCodePost(SequentialTaskSet):
         with self.client.post("/en/requests/access-code/confirm-name-address/", {
             'request-name-address-confirmation': 'yes'
         }, catch_response=True) as response:
-            verify_response('RequestUacPost-ConfirmName', self, response, 200, Page.CODE_SENT, self.expected_name)
+            expected_name = self.case["first_name"] + " " + self.case["last_name"]
+            expected_text = "will be sent to " + expected_name + " at"
+            verify_response('RequestUacPost-9-ConfirmName', self, response, 200, Page.CODE_SENT, expected_text)
 
 
 class LaunchWebChat(SequentialTaskSet):
@@ -353,12 +435,16 @@ class LaunchWebChat(SequentialTaskSet):
     This task sequence simulates a user launching web chat.
     """
 
-    def on_start(self):
+    def init_thread(self):
         self.urls_on_current_page = self.toc_urls = None
+        self.on_failure_detail = ""
+        self.on_failure_logging = ""
 
     # assume all users arrive at the start page
     @task
     def start_page(self):
+        self.init_thread()
+    
         self.client.get("/en/start/")
 
     @task
@@ -389,8 +475,8 @@ class WebsiteUser(HttpUser):
     }
     
     wait_time = between(2, 10)
-    #wait_time = between(1, 1)
-
+    
+    
 """
 This function should be called after each page transition as it aims to aggressively check that:
   - The current page is the expected page.
@@ -450,8 +536,8 @@ def report_failure(id, resp, task, failure_message, page_content):
     if page_content:
         error_detail = f' Page content >>> {page_content} <<<'
 
-    resp.failure(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}')
-    logger.error(f'ID={id} UAC={task.case["uac"]} Status={resp.status_code}: {failure_message}{error_detail}')
+    resp.failure(f'ID={id} {task.on_failure_detail} Status={resp.status_code}: {failure_message}')
+    logger.error(f'ID={id} {task.on_failure_detail} {task.on_failure_logging} Status={resp.status_code}: {failure_message}{error_detail}')
     
     # Slow down error reporting when things are going wrong (otherwise hundreds of errors are logged in just a few seconds)
     # Note that this sleep does not affect the progress of other tasks
@@ -478,9 +564,33 @@ def identify_page(id, task, resp):
 """
 Returns the html 'value' for a radio button of the target address i.e. the address that corresponds to the uprn parameter of this method.
 """
-def extractAddressRadioButtonValue(resp, uprn):
+def extract_address_radio_button_value(id, task, resp, uprn):
     page_content = resp.text
-    page_extract1 = page_content[page_content.index('id="' + uprn + '"'):]
+    
+    # Firstly check to see if the uprn is on the page
+    target_id_string = 'id="' + uprn + '"'
+    if target_id_string not in page_content:
+        # UPRN is not on page.
+        # This may be because RHUI lists only the first 100 results. So may be working correctly.
+        # Find out how many results have been listed.
+        num_addresses_search = re.search('([0-9]*) addresses found for postcode', page_content, re.IGNORECASE)
+        if not num_addresses_search:
+            error_message = 'Failed to extract number of addresses found.'
+            report_failure(id, resp, task, error_message, clean_text(resp.text))
+        
+        # Fail if the address should have been on the results page, but isn't.
+        # ie, the number of results is not high enough that we would expect RHUI to only list a subset.
+        num_addresses = int(num_addresses_search.group(1))
+        if num_addresses < 100:
+            error_message = 'RHUI failed to list address for uprn: ' + uprn + '.'
+            report_failure(id, resp, task, error_message, clean_text(resp.text))
+
+        # Abort the task_set for this UPRN. 
+        # It's unlucky enough to be for a postcode with more than 100 addresses
+        task.interrupt()
+            
+    # Page content includes the uprn, so extract its radio button id
+    page_extract1 = page_content[page_content.index(target_id_string):]
     page_extract2 = page_extract1[page_extract1.index('value='):page_extract1.index('name=')]
     page_extract2 = page_extract2.rstrip()
     address_to_select = page_extract2[7:-1]

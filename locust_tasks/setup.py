@@ -23,6 +23,8 @@ def get_next_case():
     """
 
     global next_case_index
+ 
+    #logger.info("Next case: " + str(next_case_index))
 
     next_case = cases[next_case_index]
         
