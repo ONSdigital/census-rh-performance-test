@@ -24,7 +24,7 @@ import org.apache.http.impl.client.LaxRedirectStrategy;
 
 public class LoadRH {
 
-  private static final int NUM_THREADS = 2;
+  private static final int NUM_THREADS = 1;
 
   public static void main(String[] args) throws IOException {
     HttpClient client = HttpClientBuilder.create()

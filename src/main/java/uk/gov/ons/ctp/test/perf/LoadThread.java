@@ -63,7 +63,7 @@ public class LoadThread implements Runnable {
   
   private void doGet(HttpClient client) throws ClientProtocolException, IOException {
     long startTime = System.currentTimeMillis();
-    HttpResponse response = client.execute(new HttpGet("http://34.107.206.101/en/start/"), context);
+    HttpResponse response = client.execute(new HttpGet("http://performance-rh.int.census-gcp.onsdigital.uk/en/start/"), context);
     long requestTime = System.currentTimeMillis() - startTime;
     requestCounter.incrementAndGet();
     int statusCode = response.getStatusLine().getStatusCode();
@@ -79,7 +79,7 @@ public class LoadThread implements Runnable {
   private void postUAC(HttpClient client, String uac, String expectedAddress, String expectedPostcode) throws ClientProtocolException, IOException {
     expectedAddress = expectedAddress.replace("'", "&#39;");
     
-    HttpPost httpPost = new HttpPost("http://34.107.206.101/en/start/");
+    HttpPost httpPost = new HttpPost("https://performance-rh.int.census-gcp.onsdigital.uk/en/start/");
     
     List<NameValuePair> params = new ArrayList<NameValuePair>();
     params.add(new BasicNameValuePair("uac", uac));
@@ -109,7 +109,7 @@ public class LoadThread implements Runnable {
   
 
   private void launchSurvey(HttpClient client) throws ParseException, IOException {
-    HttpPost httpPost = new HttpPost("http://34.107.206.101/en/start/confirm-address/");
+    HttpPost httpPost = new HttpPost("https://performance-rh.int.census-gcp.onsdigital.uk/en/start/confirm-address/");
     
     List<NameValuePair> params = new ArrayList<NameValuePair>();
     params.add(new BasicNameValuePair("address-check-answer", "Yes"));
